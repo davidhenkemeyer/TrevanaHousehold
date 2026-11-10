@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 import { checklistItemSchema } from "./chores.js";
 import { idSchema, isoDateTimeSchema } from "./common.js";
+import { MAX_SUBMISSION_PHOTOS, photoSchema, uploadIdsSchema } from "./uploads.js";
 
 export const plainDateSchema = z
   .string()
@@ -42,7 +43,10 @@ export const submissionSchema = z.object({
   checklist: z.array(z.object({ itemId: idSchema, text: z.string(), checked: z.boolean() })),
   /** e.g. { checked: 2, total: 3 } → "2/3 tasks completed". */
   checklistSummary: z.object({ checked: z.int(), total: z.int() }),
-  photoCount: z.int(),
+  /** Proof photos (signed URLs). Empty after they expire. */
+  photos: z.array(photoSchema),
+  /** The photos were deleted (90 days after review). */
+  photosExpired: z.boolean(),
   reviews: z.array(reviewSchema),
 });
 export type Submission = z.infer<typeof submissionSchema>;
@@ -65,6 +69,8 @@ export const instanceSchema = z.object({
   effortMinutes: z.int(),
   rewardAmount: z.int(),
   requiresPhoto: z.boolean(),
+  /** "Make it look like this": the chore's reference photo, if it has one. */
+  referencePhotoUrl: z.string().nullable(),
   reviewPolicy: z.enum(REVIEW_POLICIES),
   /** The chore's current checklist, for the submit screen. */
   checklist: z.array(checklistItemSchema),
@@ -128,6 +134,8 @@ export const submitBodySchema = z.strictObject({
     .array(z.strictObject({ itemId: idSchema, checked: z.boolean() }))
     .max(20)
     .default([]),
+  /** Proof photos, as ids from POST /uploads (purpose SUBMISSION), uploaded by the submitter. */
+  photoUploadIds: uploadIdsSchema(MAX_SUBMISSION_PHOTOS).default([]),
 });
 export type SubmitBody = z.infer<typeof submitBodySchema>;
 

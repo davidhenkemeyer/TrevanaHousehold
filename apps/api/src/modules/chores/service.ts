@@ -14,6 +14,8 @@ import { badRequest, notFound } from "../../errors.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { requireMember, requireParent } from "../access.js";
 import { familyToday, planFamily, removeUntouchedFuture } from "../instances/generate.js";
+import { type SignPhoto, photoSigner } from "../instances/views.js";
+import { checkUploads, claimUploads } from "../uploads/service.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -34,7 +36,7 @@ const SCHEDULING_FIELDS = [
   "rewardAmount",
 ] as const satisfies readonly (keyof UpdateChoreBody)[];
 
-function toChoreDto(chore: ChoreRow): ChoreDto {
+async function toChoreDto(chore: ChoreRow, sign: SignPhoto): Promise<ChoreDto> {
   return {
     id: chore.id,
     name: chore.name,
@@ -50,6 +52,7 @@ function toChoreDto(chore: ChoreRow): ChoreDto {
     assignMode: chore.assignMode,
     eligibleMembershipIds: chore.eligible.map((e) => e.membershipId),
     checklist: chore.checklist.map((i) => ({ id: i.id, text: i.text })),
+    referencePhotoUrl: chore.referencePhotoKey ? await sign(chore.referencePhotoKey) : null,
     active: chore.active,
     createdAt: chore.createdAt.toISOString(),
     updatedAt: chore.updatedAt.toISOString(),
@@ -93,8 +96,15 @@ export async function createChore(
   body: CreateChoreBody,
 ): Promise<ChoreDto> {
   const parent = await requireParent(deps.db, familyId, userId);
+  const [photo] = await checkUploads(deps, {
+    familyId,
+    member: parent,
+    purpose: "REFERENCE",
+    uploadIds: body.referencePhotoUploadId ? [body.referencePhotoUploadId] : [],
+  });
   return deps.db.$transaction(async (tx) => {
     await assertActiveMembers(tx, familyId, body.eligibleMembershipIds);
+    if (photo) await claimUploads(tx, [photo], deps.now());
     const chore = await tx.chore.create({
       data: {
         familyId,
@@ -110,6 +120,7 @@ export async function createChore(
         recurrence: body.recurrence,
         deadlineMinutes: body.deadlineMinutes,
         assignMode: body.assignMode,
+        referencePhotoKey: photo?.key ?? null,
         checklist: { create: body.checklist.map((text, position) => ({ text, position })) },
         eligible: {
           create: body.eligibleMembershipIds.map((membershipId, position) => ({
@@ -121,7 +132,7 @@ export async function createChore(
       include: choreInclude,
     });
     await planFamily(tx, familyId, deps.now());
-    return toChoreDto(chore);
+    return toChoreDto(chore, photoSigner(deps));
   });
 }
 
@@ -137,7 +148,8 @@ export async function listChores(
     include: choreInclude,
     orderBy: [{ active: "desc" }, { name: "asc" }],
   });
-  return { chores: chores.map(toChoreDto) };
+  const sign = photoSigner(deps);
+  return { chores: await Promise.all(chores.map((c) => toChoreDto(c, sign))) };
 }
 
 export async function getChore(
@@ -147,7 +159,7 @@ export async function getChore(
   choreId: string,
 ): Promise<ChoreDto> {
   await requireMember(deps.db, familyId, userId);
-  return toChoreDto(await findChore(deps.db, familyId, choreId));
+  return toChoreDto(await findChore(deps.db, familyId, choreId), photoSigner(deps));
 }
 
 export async function updateChore(
@@ -157,9 +169,17 @@ export async function updateChore(
   choreId: string,
   body: UpdateChoreBody,
 ): Promise<ChoreDto> {
-  await requireParent(deps.db, familyId, userId);
+  const parent = await requireParent(deps.db, familyId, userId);
+  // A replaced or removed reference photo is deleted later by the cleanup job.
+  const [photo] = await checkUploads(deps, {
+    familyId,
+    member: parent,
+    purpose: "REFERENCE",
+    uploadIds: body.referencePhotoUploadId ? [body.referencePhotoUploadId] : [],
+  });
   return deps.db.$transaction(async (tx) => {
     const existing = await findChore(tx, familyId, choreId);
+    if (photo) await claimUploads(tx, [photo], deps.now());
     const assignMode = body.assignMode ?? existing.assignMode;
     const eligible = body.eligibleMembershipIds ?? existing.eligible.map((e) => e.membershipId);
     if (assignMode === "FIXED" && eligible.length === 0) {
@@ -181,6 +201,9 @@ export async function updateChore(
         ...(body.recurrence !== undefined && { recurrence: body.recurrence }),
         ...(body.deadlineMinutes !== undefined && { deadlineMinutes: body.deadlineMinutes }),
         ...(body.assignMode !== undefined && { assignMode: body.assignMode }),
+        ...(body.referencePhotoUploadId !== undefined && {
+          referencePhotoKey: photo?.key ?? null,
+        }),
       },
     });
     if (body.checklist) {
@@ -202,7 +225,7 @@ export async function updateChore(
       await removeUntouchedFuture(tx, familyId, today, choreId);
       await planFamily(tx, familyId, deps.now());
     }
-    return toChoreDto(await findChore(tx, familyId, choreId));
+    return toChoreDto(await findChore(tx, familyId, choreId), photoSigner(deps));
   });
 }
 

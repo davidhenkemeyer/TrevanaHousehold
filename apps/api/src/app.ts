@@ -16,6 +16,9 @@ import type { Db } from "./db.js";
 import type { Deps } from "./deps.js";
 import { registerErrorHandling } from "./errors.js";
 import { createAccessTokenService } from "./lib/accessTokens.js";
+import { createS3Storage } from "./lib/storage/s3.js";
+import type { PhotoStorage } from "./lib/storage/types.js";
+import { uploadRoutes } from "./modules/uploads/routes.js";
 import { authRoutes, meRoutes } from "./modules/auth/routes.js";
 import { choreRoutes } from "./modules/chores/routes.js";
 import { instanceRoutes } from "./modules/instances/routes.js";
@@ -28,6 +31,8 @@ export interface BuildAppOptions {
   config: AppConfig;
   db: Db;
   now?: () => Date;
+  /** Default: S3-compatible storage from config.storage. Tests pass an in-memory fake. */
+  storage?: PhotoStorage;
 }
 
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
@@ -36,6 +41,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     config,
     db,
     accessTokens: createAccessTokenService(config.jwtSecret, config.accessTokenTtlSeconds),
+    storage: options.storage ?? createS3Storage(config.storage),
     now: options.now ?? (() => new Date()),
   };
 
@@ -83,6 +89,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       await v1.register(choreRoutes, { deps });
       await v1.register(instanceRoutes, { deps });
       await v1.register(reviewRoutes, { deps });
+      await v1.register(uploadRoutes, { deps });
     },
     { prefix: "/v1" },
   );

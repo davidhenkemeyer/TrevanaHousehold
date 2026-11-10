@@ -28,6 +28,7 @@ import {
   describeBatchResult,
   groupByChild,
 } from "../../../src/features/review/queue";
+import { PhotoViewer } from "../../../src/features/photos/PhotoViews";
 import { ReviewCard } from "../../../src/features/review/ReviewCard";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
@@ -42,6 +43,7 @@ export default function Review() {
   const [needsWork, setNeedsWork] = useState<ReviewQueueItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<{ url: string; title: string } | null>(null);
 
   const queue = useInfiniteQuery<
     ReviewQueue,
@@ -118,6 +120,7 @@ export default function Review() {
         setNeedsWork(item);
       }}
       onOpen={() => open(item)}
+      onViewPhoto={(url, title) => setViewing({ url, title })}
     />
   );
 
@@ -228,12 +231,18 @@ export default function Review() {
             key: needsWork.submission.id,
             childName: needsWork.submission.submittedBy.displayName,
             choreName: needsWork.instance.choreName,
+            photoUrl: needsWork.submission.photos[0]?.url ?? null,
           }
         }
         submitting={review.isPending}
         error={needsWork ? errorMessage(review.error) : null}
         onSubmit={(body) => needsWork && review.mutate({ item: needsWork, body })}
         onClose={() => setNeedsWork(null)}
+      />
+      <PhotoViewer
+        url={viewing?.url ?? null}
+        {...(viewing && { title: viewing.title })}
+        onClose={() => setViewing(null)}
       />
     </View>
   );

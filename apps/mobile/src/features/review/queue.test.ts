@@ -14,7 +14,8 @@ function item(id: string, who: typeof billy, batchEligible = true): ReviewQueueI
       submittedAt: "2026-11-10T20:00:00.000Z",
       checklist: [],
       checklistSummary: { checked: 0, total: 0 },
-      photoCount: 0,
+      photos: [],
+      photosExpired: false,
       reviews: [],
     },
     instance: {
@@ -25,6 +26,7 @@ function item(id: string, who: typeof billy, batchEligible = true): ReviewQueueI
       isLate: false,
       rewardAmount: 0,
       reviewPolicy: batchEligible ? "BATCH_OK" : "REVIEW_EACH",
+      referencePhotoUrl: null,
     },
     batchEligible,
   };

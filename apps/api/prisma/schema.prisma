@@ -47,6 +47,7 @@ model Family {
   invites     Invite[]
   chores      Chore[]
   instances   ChoreInstance[]
+  uploads     Upload[]
 }
 
 /// A user's place in a family: their role, capacity, and points there.
@@ -78,6 +79,7 @@ model Membership {
   events         InstanceEvent[]
   submissions    Submission[]
   reviewsWritten Review[]
+  uploads        Upload[]
 
   @@unique([familyId, userId])
   @@index([userId])
@@ -181,28 +183,31 @@ enum ReviewAction {
 
 /// A chore definition ("template"). Its recurrence produces dated ChoreInstances.
 model Chore {
-  id              String       @id @default(uuid(7)) @db.Uuid
-  familyId        String       @db.Uuid
-  name            String
-  description     String       @default("")
+  id                String       @id @default(uuid(7)) @db.Uuid
+  familyId          String       @db.Uuid
+  name              String
+  description       String       @default("")
   /// Situational trigger shown on the card, e.g. "After dinner" (branding doc: implementation intentions).
-  cue             String?
-  effortMinutes   Int
-  defaultPriority Priority     @default(NORMAL)
-  requiresPhoto   Boolean      @default(false)
-  reviewPolicy    ReviewPolicy @default(REVIEW_EACH)
+  cue               String?
+  effortMinutes     Int
+  defaultPriority   Priority     @default(NORMAL)
+  requiresPhoto     Boolean      @default(false)
+  reviewPolicy      ReviewPolicy @default(REVIEW_EACH)
   /// In the family's reward currency (cents or points). Paid out from Step 8.
-  rewardAmount    Int          @default(0)
+  rewardAmount      Int          @default(0)
   /// RecurrenceRule JSON; see packages/domain/src/recurrence.ts.
-  recurrence      Json
+  recurrence        Json
   /// Due this long after the occurrence becomes available.
-  deadlineMinutes Int
-  assignMode      AssignMode
+  deadlineMinutes   Int
+  assignMode        AssignMode
+  /// "Golden standard" photo shown to kids and next to submissions in review.
+  /// A storage key from the upload flow; kept until replaced or removed.
+  referencePhotoKey String?
   /// Archived chores stop producing occurrences; their history stays.
-  active          Boolean      @default(true)
-  createdById     String       @db.Uuid
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  active            Boolean      @default(true)
+  createdById       String       @db.Uuid
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   family    Family               @relation(fields: [familyId], references: [id], onDelete: Cascade)
   createdBy Membership           @relation("ChoreCreatedBy", fields: [createdById], references: [id])
@@ -296,14 +301,16 @@ model InstanceEvent {
 
 /// One attempt at completing an occurrence: checklist state and photos.
 model Submission {
-  id             String   @id @default(uuid(7)) @db.Uuid
-  instanceId     String   @db.Uuid
-  submittedById  String   @db.Uuid
-  submittedAt    DateTime
+  id              String    @id @default(uuid(7)) @db.Uuid
+  instanceId      String    @db.Uuid
+  submittedById   String    @db.Uuid
+  submittedAt     DateTime
   /// [{ itemId, text, checked }], with text snapshotted.
-  checklistState Json
-  /// Storage keys from the upload flow (Step 7). Never client-supplied URLs.
-  photoKeys      String[] @default([])
+  checklistState  Json
+  /// Storage keys from the upload flow. Never client-supplied URLs.
+  photoKeys       String[]  @default([])
+  /// Set when the photos were deleted (90 days after review); photoKeys is then empty.
+  photosDeletedAt DateTime?
 
   instance    ChoreInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   submittedBy Membership    @relation(fields: [submittedById], references: [id])
@@ -330,4 +337,35 @@ model Review {
   reviewer   Membership? @relation(fields: [reviewerId], references: [id])
 
   @@index([submissionId])
+}
+
+enum UploadPurpose {
+  /// Proof photo attached to a submission.
+  SUBMISSION
+  /// A chore's reference ("golden standard") photo.
+  REFERENCE
+}
+
+/// A photo upload the API authorized. The app uploads the file straight to
+/// storage, then refers to it by this id (never by key or URL). An upload can
+/// be attached once; unused ones are cleaned up after they expire.
+model Upload {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  familyId    String        @db.Uuid
+  createdById String        @db.Uuid
+  purpose     UploadPurpose
+  /// Storage key: families/{familyId}/{purpose}/{uuid}.
+  key         String        @unique
+  contentType String
+  createdAt   DateTime
+  /// The upload form stops working at this time.
+  expiresAt   DateTime
+  /// When it was attached to a submission or chore.
+  usedAt      DateTime?
+
+  family    Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy Membership @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([expiresAt])
 }

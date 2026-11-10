@@ -11,3 +11,4 @@ export * from "./pairing.js";
 export * from "./chores.js";
 export * from "./instances.js";
 export * from "./reviews.js";
+export * from "./uploads.js";

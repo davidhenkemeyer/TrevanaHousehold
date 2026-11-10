@@ -7,7 +7,7 @@ import type { Instance } from "@titan/contracts";
 import { Pressable, View } from "react-native";
 import { AppText, Avatar, Button, Card, Chip } from "../../components/ui";
 import { colors, spacing } from "../../theme";
-
+import { pinsOf } from "../photos/pins";
 import { dueLabel } from "./sections";
 
 export type CardAction = "start" | "defer" | "reset" | "complete";
@@ -27,6 +27,7 @@ export function ChoreCard({
 }) {
   const can = (a: CardAction) => item.availableActions.includes(a);
   const steps = item.checklist.length;
+  const pinCount = pinsOf(item.latestReview?.annotations).length;
 
   return (
     <Card style={{ gap: spacing.md }}>
@@ -67,14 +68,21 @@ export function ChoreCard({
         </View>
       </Pressable>
 
-      {item.status === "NEEDS_REWORK" && item.latestReview?.note && (
+      {item.status === "NEEDS_REWORK" && (item.latestReview?.note || pinCount > 0) && (
         <View
           style={{ backgroundColor: `${colors.attention}14`, borderRadius: 8, padding: spacing.md }}
         >
           <AppText variant="caption" color={colors.textMuted}>
-            {`${item.latestReview.reviewer?.displayName ?? "A parent"} says:`}
+            {`${item.latestReview?.reviewer?.displayName ?? "A parent"} says:`}
           </AppText>
-          <AppText>{item.latestReview.note}</AppText>
+          {item.latestReview?.note && <AppText>{item.latestReview.note}</AppText>}
+          {pinCount > 0 && (
+            <Pressable accessibilityRole="button" onPress={onOpen}>
+              <AppText variant="bodyStrong" color={colors.primary}>
+                {`See ${pinCount === 1 ? "the spot" : `${pinCount} spots`} marked on your photo ›`}
+              </AppText>
+            </Pressable>
+          )}
         </View>
       )}
 

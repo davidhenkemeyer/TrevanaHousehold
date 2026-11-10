@@ -21,6 +21,7 @@ function item(overrides: Partial<Instance>): Instance {
     effortMinutes: 10,
     rewardAmount: 0,
     requiresPhoto: false,
+    referencePhotoUrl: null,
     reviewPolicy: "REVIEW_EACH",
     checklist: [],
     assignees: [{ membershipId: BILLY, displayName: "Billy", avatarColor: "#2563EB" }],

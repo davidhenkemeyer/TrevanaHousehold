@@ -12,7 +12,15 @@ import type {
 import { type Role, availableActions, effectivePriority } from "@titan/domain";
 import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
+import type { Deps } from "../../deps.js";
 import { dbDateToPlain } from "../../lib/dates.js";
+
+/** Turns a storage key into a short-lived signed URL. Keys never leave the API. */
+export type SignPhoto = (key: string) => Promise<string>;
+
+export function photoSigner(deps: Pick<Deps, "storage" | "now">): SignPhoto {
+  return (key) => deps.storage.signedUrl(key, deps.now());
+}
 
 const memberWithUser = { include: { user: true } } as const;
 
@@ -73,7 +81,10 @@ export const checklistStateSchema = z.array(
   z.object({ itemId: z.string(), text: z.string(), checked: z.boolean() }),
 );
 
-export function toSubmissionDto(submission: SubmissionRow): SubmissionDto {
+export async function toSubmissionDto(
+  submission: SubmissionRow,
+  sign: SignPhoto,
+): Promise<SubmissionDto> {
   const checklist = checklistStateSchema.parse(submission.checklistState);
   return {
     id: submission.id,
@@ -85,12 +96,17 @@ export function toSubmissionDto(submission: SubmissionRow): SubmissionDto {
       checked: checklist.filter((i) => i.checked).length,
       total: checklist.length,
     },
-    photoCount: submission.photoKeys.length,
+    photos: await Promise.all(submission.photoKeys.map(async (key) => ({ url: await sign(key) }))),
+    photosExpired: submission.photosDeletedAt !== null,
     reviews: submission.reviews.map(toReviewDto),
   };
 }
 
-export function toInstanceDto(row: InstanceRow, viewer: Viewer): Instance {
+export async function toInstanceDto(
+  row: InstanceRow,
+  viewer: Viewer,
+  sign: SignPhoto,
+): Promise<Instance> {
   const latestReview = row.submissions[0]?.reviews[0];
   return {
     id: row.id,
@@ -107,6 +123,7 @@ export function toInstanceDto(row: InstanceRow, viewer: Viewer): Instance {
     effortMinutes: row.effortMinutes,
     rewardAmount: row.rewardAmount,
     requiresPhoto: row.chore.requiresPhoto,
+    referencePhotoUrl: row.chore.referencePhotoKey ? await sign(row.chore.referencePhotoKey) : null,
     reviewPolicy: row.chore.reviewPolicy,
     checklist: row.chore.checklist.map((i) => ({ id: i.id, text: i.text })),
     assignees: row.assignees.map((a) => toPerson(a.membership)),
@@ -115,21 +132,24 @@ export function toInstanceDto(row: InstanceRow, viewer: Viewer): Instance {
       actorRole: viewer.role,
       actorIsAssignee: row.assignees.some((a) => a.membershipId === viewer.membershipId),
       requiresPhoto: row.chore.requiresPhoto,
-      hasPhoto: false, // photos arrive in Step 7; "complete" is still listed when only the photo is missing
+      // The photo is attached in the same request as "complete", so the button
+      // shows either way; the app asks for the photo first.
+      hasPhoto: false,
       reviewPolicy: row.chore.reviewPolicy,
     }),
     latestReview: latestReview ? toReviewDto(latestReview) : null,
   };
 }
 
-export function toInstanceDetailDto(
+export async function toInstanceDetailDto(
   row: InstanceRow,
   extras: DetailExtrasRow,
   viewer: Viewer,
-): InstanceDetail {
+  sign: SignPhoto,
+): Promise<InstanceDetail> {
   return {
-    ...toInstanceDto(row, viewer),
-    submissions: extras.submissions.map(toSubmissionDto),
+    ...(await toInstanceDto(row, viewer, sign)),
+    submissions: await Promise.all(extras.submissions.map((s) => toSubmissionDto(s, sign))),
     events: extras.events.map((e) => ({
       action: e.action,
       fromStatus: e.fromStatus,

@@ -6,7 +6,7 @@
  * the "singleton" queue policy means only one run of each job is active at a
  * time, across all processes.
  *
- * The job logic itself lives in plain functions (planning.ts, lateness.ts)
+ * The job logic itself lives in plain functions (planning.ts, lateness.ts, photoCleanup.ts)
  * that are tested directly and can be run by hand (`pnpm job:plan`).
  */
 import type { FastifyBaseLogger } from "fastify";
@@ -14,6 +14,7 @@ import { PgBoss } from "pg-boss";
 import type { AppConfig } from "../config.js";
 import type { Deps } from "../deps.js";
 import { markLateInstances } from "./lateness.js";
+import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
 
 export const JOBS = {
@@ -21,6 +22,8 @@ export const JOBS = {
   planFamilies: { name: "plan-families", cron: "5 * * * *" },
   /** Every 5 minutes. */
   markLate: { name: "mark-late", cron: "*/5 * * * *" },
+  /** Daily at 09:15 UTC (the middle of the night in the Americas). */
+  cleanUpPhotos: { name: "clean-up-photos", cron: "15 9 * * *" },
 } as const;
 
 export interface RunningJobs {
@@ -29,7 +32,9 @@ export interface RunningJobs {
 }
 
 export async function startJobs(
-  deps: Pick<Deps, "db" | "now"> & { config: Pick<AppConfig, "databaseUrl"> },
+  deps: Pick<Deps, "db" | "now" | "storage"> & {
+    config: Pick<AppConfig, "databaseUrl" | "photoRetentionDays">;
+  },
   log: FastifyBaseLogger,
   options: { schema?: string } = {},
 ): Promise<RunningJobs> {
@@ -50,6 +55,9 @@ export async function startJobs(
   });
   await boss.work(JOBS.markLate.name, async () => {
     await markLateInstances(deps, log);
+  });
+  await boss.work(JOBS.cleanUpPhotos.name, async () => {
+    await cleanUpPhotos(deps, log);
   });
 
   log.info({ jobs: Object.values(JOBS).map((j) => j.name) }, "Background jobs started");

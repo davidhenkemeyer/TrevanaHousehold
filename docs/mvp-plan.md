@@ -24,20 +24,20 @@ Guiding rule: **all business logic lives on the server and in a shared domain pa
 
 ## Tech stack
 
-| Concern                   | Choice                                                                                                            | Why                                                                        |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Monorepo                  | pnpm workspaces + Turborepo                                                                                       | Shared types and tooling across the app and the server                     |
-| App (iOS / Android / Web) | Expo SDK (React Native + Expo Router + react-native-web), TypeScript                                              | One codebase for all three platforms. EAS builds the store binaries.       |
-| UI data layer             | TanStack Query + typed API client                                                                                 | Caching, offline-friendly retries                                          |
-| API                       | Node + Fastify + Zod via `fastify-type-provider-zod`; request/response schemas shared in `packages/contracts`     | Typed client for the app. OpenAPI output for Alexa and other clients.      |
-| DB / ORM                  | PostgreSQL 16 + Prisma 7 (migrations)                                                                             | Strong enums, JSON, and timezone support                                   |
-| Background jobs           | pg-boss (job queue that runs inside Postgres)                                                                     | No Redis needed. Handles scheduled and retryable jobs.                     |
-| Auth                      | Email + password (argon2id), JWT access + rotating refresh tokens. Kid profiles are reached by profile switching. | Simple now. Can grow into OAuth2 later, which Alexa account linking needs. |
-| Photo storage             | S3-compatible: MinIO locally, Cloudflare R2 or S3 in production. Uploads use presigned URLs.                      | Image files never pass through the API server                              |
-| Push                      | Expo Push Notifications (wraps APNs and FCM)                                                                      | One API for iOS and Android                                                |
-| Tests                     | Vitest for the domain and API (with a test Postgres via Docker), Playwright later for web                         |                                                                            |
-| CI                        | GitHub Actions: format, lint, typecheck, test (with a Postgres service)                                           | Replaces the Jenkins idea from the old doc; much less to run yourself      |
-| Local dev                 | `docker-compose.yml` runs Postgres + MinIO                                                                        |                                                                            |
+| Concern                   | Choice                                                                                                                                | Why                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Monorepo                  | pnpm workspaces + Turborepo                                                                                                           | Shared types and tooling across the app and the server                     |
+| App (iOS / Android / Web) | Expo SDK (React Native + Expo Router + react-native-web), TypeScript                                                                  | One codebase for all three platforms. EAS builds the store binaries.       |
+| UI data layer             | TanStack Query + typed API client                                                                                                     | Caching, offline-friendly retries                                          |
+| API                       | Node + Fastify + Zod via `fastify-type-provider-zod`; request/response schemas shared in `packages/contracts`                         | Typed client for the app. OpenAPI output for Alexa and other clients.      |
+| DB / ORM                  | PostgreSQL 16 + Prisma 7 (migrations)                                                                                                 | Strong enums, JSON, and timezone support                                   |
+| Background jobs           | pg-boss (job queue that runs inside Postgres)                                                                                         | No Redis needed. Handles scheduled and retryable jobs.                     |
+| Auth                      | Email + password (argon2id), JWT access + rotating refresh tokens. Kid profiles are reached by profile switching.                     | Simple now. Can grow into OAuth2 later, which Alexa account linking needs. |
+| Photo storage             | S3-compatible: RustFS locally (MinIO stopped publishing images), Cloudflare R2 or S3 in production. Uploads use presigned POST forms. | Image files never pass through the API server                              |
+| Push                      | Expo Push Notifications (wraps APNs and FCM)                                                                                          | One API for iOS and Android                                                |
+| Tests                     | Vitest for the domain and API (with a test Postgres via Docker), Playwright later for web                                             |                                                                            |
+| CI                        | GitHub Actions: format, lint, typecheck, test (with a Postgres service)                                                               | Replaces the Jenkins idea from the old doc; much less to run yourself      |
+| Local dev                 | `docker-compose.yml` runs Postgres + RustFS (S3-compatible storage)                                                                   |                                                                            |
 
 ## Directory structure
 
@@ -45,7 +45,7 @@ Guiding rule: **all business logic lives on the server and in a shared domain pa
 FamilyChoresApp/
 ├─ claude.md                    # stack, commands, conventions
 ├─ package.json / pnpm-workspace.yaml / turbo.json / tsconfig.base.json
-├─ docker-compose.yml           # postgres, minio
+├─ docker-compose.yml           # postgres, storage (RustFS)
 ├─ .github/workflows/ci.yml
 ├─ apps/
 │  ├─ mobile/                   # Expo app (iOS/Android/Web)
@@ -292,11 +292,20 @@ Adapted rather than copied:
      - **Daily time** (Family tab → member → "Daily time"): per-weekday steppers in 5-minute steps, presets (Young kid, Kid, Teen, Parent), and a weekly total. Saving re-plans untouched chores.
      - Fixed along the way: the API's CORS setup allowed only GET/HEAD/POST, so the web app couldn't send PATCH or DELETE (e.g. setting a PIN on the web). Now covered by a test.
      - Verified by a second Playwright test: create a chore in the editor, see the week go over capacity, fix it with daily time, kid submits partially, parent switches back with a PIN, sends it back with a note, kid redoes it, parent approves with a swipe.
-7. **Photos**
+7. ✅ **Photos**
    - Upload via presigned URL, using the camera or the photo library.
    - Reference ("golden standard") photo per chore, shown side by side in review.
    - Tap-to-pin mark-up on submitted photos.
    - Enforce the `requiresPhoto` rule.
+   - **As built:**
+     - **Upload flow:** `POST /v1/families/:id/uploads { purpose, contentType }` returns a signed POST form (10 minutes, exact key, JPEG/PNG/WebP, max 8 MB, enforced by storage). The app shrinks photos to ≤ 1600 px JPEG first (which also drops location metadata), uploads straight to storage, then sends only the `uploadId`. On attach the API checks family, uploader, purpose, single use, and the stored file's type and size. Up to 3 photos per submission.
+     - **Viewing:** responses carry signed GET URLs (30-minute validity), never keys. Signing time is rounded to 10 minutes so URLs stay stable and images cache.
+     - `requiresPhoto` is enforced for kids; a parent's completion needs no photo.
+     - **Reference photo** per chore (parents), shown on the kid's "Done" sheet ("Make it look like this"), the chore detail, and next to the submitted photo in review.
+     - **Pins:** in "Needs work", "Mark up the photo" opens a full-screen view: tap to drop numbered pins with 60-character comments. The kid's card says "See the spot marked on your photo" and the detail shows the pins. (Pins on approvals: not in the UI yet; the API accepts them.)
+     - **Retention (decided):** proof photos are deleted 90 days after review (`photosExpired` in the history); unused uploads after a day; replaced or removed reference photos too. Daily `clean-up-photos` job; `job:cleanup-photos` runs it by hand.
+     - **Local storage:** RustFS replaces MinIO, whose community images are no longer published. In development the API creates the bucket, sets its CORS rule for `CORS_ORIGINS`, and signs URLs with this computer's LAN address so phones on the Wi-Fi can reach storage.
+     - **Fixed along the way:** the person-switch endpoint was rate-limited per IP, which a household shares (family iPad plus kids' phones on one Wi-Fi). It's now per signed-in account; PIN guessing is still stopped by the per-profile lockout.
 8. **Rewards**
    - Family reward settings (money / points / none). Chore kind (Routine / Extra Job) with the XP-for-routines, coins-for-extra-jobs default.
    - Ledger, balances, and pending amounts. No punitive deductions.
@@ -312,7 +321,7 @@ Adapted rather than copied:
     - Types: new chore assigned, chore late, submitted for review, approved, needs rework, rejected, canceled, reward request decided, badge earned.
 11. **Deploy + beta**
     - Final app icons from the Titan icon set; trademark check on the "Titan" names before store listings.
-    - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage.
+    - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage. Set `S3_*` env vars, the bucket's CORS rule for the web origin, and a lifecycle rule as a backstop for the 90-day photo retention.
     - Deploy the web build as a static site.
     - Ship test builds through EAS: TestFlight for iOS, Play internal testing for Android.
 

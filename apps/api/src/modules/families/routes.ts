@@ -98,8 +98,18 @@ export const familyRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app, {
   app.post(
     "/families/:familyId/members/:membershipId/session",
     {
-      // PIN guessing: per-IP limit here, plus the per-profile lockout in the service.
-      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+      // Per signed-in account, not per IP: a whole household shares one IP (the
+      // family iPad, kids' phones). PIN guessing is stopped by the per-profile
+      // lockout in the service (5 wrong PINs lock it for 15 minutes).
+      // "preHandler" so it runs after sign-in is checked and userId is known.
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute",
+          hook: "preHandler",
+          keyGenerator: (request) => `user:${request.userId}`,
+        },
+      },
       schema: {
         params: memberParamsSchema,
         body: switchSessionBodySchema,

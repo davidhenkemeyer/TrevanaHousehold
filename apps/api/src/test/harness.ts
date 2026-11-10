@@ -9,6 +9,7 @@ import type {
   AgendaResponse,
   AuthResponse,
   Chore,
+  CreateUploadResponse,
   FamilyDetail,
   Member,
   Tokens,
@@ -18,6 +19,7 @@ import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";
 import { type AppConfig, loadConfig } from "../config.js";
 import { type Db, createDb } from "../db.js";
+import { type FakeStorage, createFakeStorage } from "./fakeStorage.js";
 import { testDatabaseUrl } from "./testDatabase.js";
 
 /** The fixed starting instant for every test. */
@@ -30,6 +32,8 @@ export interface Session extends AuthResponse {
 export interface TestApp {
   app: FastifyInstance;
   db: Db;
+  /** In-memory photo storage (reset before each test). */
+  storage: FakeStorage;
   /** Moves the app's clock forward. */
   advance(ms: number): void;
   request(
@@ -50,6 +54,15 @@ export interface TestApp {
   /** Creates a chore. Defaults: "Dishes", 10 min, daily from T0's date, due in 12 h, AUTO. */
   createChore(parent: Session, familyId: string, body?: Record<string, unknown>): Promise<Chore>;
   agenda(session: Session, familyId: string, query?: string): Promise<AgendaResponse>;
+  /**
+   * Requests an upload and "uploads" a file to fake storage, as the app does.
+   * Returns the upload id. `stored: false` skips the file (an unfinished upload).
+   */
+  uploadPhoto(
+    session: Session,
+    familyId: string,
+    options?: { purpose?: "SUBMISSION" | "REFERENCE"; stored?: boolean; size?: number },
+  ): Promise<string>;
 }
 
 /** Default chore fields for tests (T0 is Tuesday 2026-11-10, 06:00 in Chicago). */
@@ -90,6 +103,7 @@ export function useTestApp(): TestApp {
   let db: Db;
   let now = T0;
   let emailCounter = 0;
+  const storage = createFakeStorage();
 
   beforeAll(async () => {
     const config: AppConfig = {
@@ -101,12 +115,14 @@ export function useTestApp(): TestApp {
       rateLimitEnabled: false,
     };
     db = createDb(config.databaseUrl);
-    app = await buildApp({ config, db, now: () => now });
+    app = await buildApp({ config, db, now: () => now, storage });
     await app.ready();
   });
 
   beforeEach(async () => {
     now = T0;
+    storage.objects.clear();
+    storage.deleted.length = 0;
     await truncateAll(db);
   });
 
@@ -122,6 +138,7 @@ export function useTestApp(): TestApp {
     get db() {
       return db;
     },
+    storage,
     advance(ms) {
       now = new Date(now.getTime() + ms);
     },
@@ -189,6 +206,18 @@ export function useTestApp(): TestApp {
       const res = await t.request("GET", `/v1/families/${familyId}/agenda${query}`, { session });
       expectStatus(res, 200);
       return res.json<AgendaResponse>();
+    },
+    async uploadPhoto(session, familyId, options = {}) {
+      const res = await t.request("POST", `/v1/families/${familyId}/uploads`, {
+        session,
+        body: { purpose: options.purpose ?? "SUBMISSION", contentType: "image/jpeg" },
+      });
+      expectStatus(res, 201);
+      const upload = res.json<CreateUploadResponse>();
+      if (options.stored !== false) {
+        storage.put(upload.fields.key ?? "", { ...(options.size && { size: options.size }) });
+      }
+      return upload.uploadId;
     },
   };
   return t;

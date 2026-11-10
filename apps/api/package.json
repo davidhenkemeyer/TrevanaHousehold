@@ -17,9 +17,13 @@
     "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
     "worker": "node --env-file-if-exists=.env dist/worker.js",
     "job:plan": "tsx --env-file-if-exists=.env src/jobs/run-once.ts plan",
-    "job:mark-late": "tsx --env-file-if-exists=.env src/jobs/run-once.ts mark-late"
+    "job:mark-late": "tsx --env-file-if-exists=.env src/jobs/run-once.ts mark-late",
+    "job:cleanup-photos": "tsx --env-file-if-exists=.env src/jobs/run-once.ts cleanup-photos"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1165.0",
+    "@aws-sdk/s3-presigned-post": "3.1165.0",
+    "@aws-sdk/s3-request-presigner": "3.1165.0",
     "@fastify/cors": "11.4.0",
     "@fastify/rate-limit": "11.2.2",
     "@node-rs/argon2": "2.2.2",

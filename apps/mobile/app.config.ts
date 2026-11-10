@@ -38,6 +38,14 @@ const config: ExpoConfig = {
     "expo-secure-store",
     "expo-font",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "Titan Household uses your photos to show that a chore is done.",
+        cameraPermission: "Titan Household uses the camera to take a photo of a finished chore.",
+        microphonePermission: false,
+      },
+    ],
+    [
       "expo-splash-screen",
       { image: "./assets/generated/splash-icon.png", imageWidth: 160, backgroundColor: "#F1F5F9" },
     ],

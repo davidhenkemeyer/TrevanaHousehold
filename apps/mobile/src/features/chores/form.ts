@@ -27,6 +27,10 @@ import {
 
 const MINUTES_PER_DAY = 24 * 60;
 
+/** What to do with the chore's reference photo when saving. */
+export type ReferencePhotoChange =
+  { kind: "unchanged" } | { kind: "new"; uploadId: string } | { kind: "remove" };
+
 /** "Due by the end of the day it starts" is stored as minutes, but edited as its own choice. */
 export type Deadline = { kind: "endOfDay" } | { kind: "minutes"; minutes: number };
 
@@ -53,6 +57,7 @@ export interface ChoreForm {
   reviewPolicy: ReviewPolicy;
   requiresPhoto: boolean;
   rewardAmount: number;
+  referencePhoto: ReferencePhotoChange;
 }
 
 const usesWeekdays = (freq: Frequency) => freq === "WEEKLY";
@@ -126,6 +131,7 @@ export function newChoreForm(today: PlainDate): ChoreForm {
     reviewPolicy: "REVIEW_EACH",
     requiresPhoto: false,
     rewardAmount: 0,
+    referencePhoto: { kind: "unchanged" },
   };
 }
 
@@ -157,6 +163,7 @@ export function formFromChore(chore: Chore): ChoreForm {
     reviewPolicy: chore.reviewPolicy,
     requiresPhoto: chore.requiresPhoto,
     rewardAmount: chore.rewardAmount,
+    referencePhoto: { kind: "unchanged" },
   };
 }
 
@@ -190,6 +197,9 @@ export function toChoreBody(form: ChoreForm): CreateChoreBody {
     assignMode: form.assignMode,
     eligibleMembershipIds: form.eligibleMembershipIds,
     checklist: form.checklist.map((s) => s.trim()).filter((s) => s !== ""),
+    ...(form.referencePhoto.kind === "new" && {
+      referencePhotoUploadId: form.referencePhoto.uploadId,
+    }),
   };
 }
 
@@ -205,6 +215,7 @@ export function toUpdateBody(form: ChoreForm, original: Chore): UpdateChoreBody 
   for (const key of Object.keys(after) as (keyof CreateChoreBody)[]) {
     if (JSON.stringify(after[key]) !== JSON.stringify(before[key])) changed[key] = after[key];
   }
+  if (form.referencePhoto.kind === "remove") changed.referencePhotoUploadId = null;
   return changed as UpdateChoreBody;
 }
 

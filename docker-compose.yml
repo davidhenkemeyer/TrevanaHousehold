@@ -17,19 +17,20 @@ services:
       timeout: 3s
       retries: 10
 
-  # S3-compatible object storage for chore completion photos (Step 7).
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  # S3-compatible object storage for chore photos: RustFS (Apache-2.0), a
+  # drop-in for MinIO, whose community images are no longer published.
+  # Pinned: the project only adopts releases at least two weeks old.
+  storage:
+    image: rustfs/rustfs:1.0.4
     environment:
-      MINIO_ROOT_USER: chores
-      MINIO_ROOT_PASSWORD: chores-dev-secret
+      RUSTFS_ACCESS_KEY: chores
+      RUSTFS_SECRET_KEY: chores-dev-secret
     ports:
       - "9000:9000" # S3 API
       - "9001:9001" # web console
     volumes:
-      - miniodata:/data
+      - storagedata:/data
 
 volumes:
   pgdata:
-  miniodata:
+  storagedata:

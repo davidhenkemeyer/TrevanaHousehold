@@ -13,6 +13,8 @@ import type {
   CreateFamilyBody,
   CreateInviteBody,
   CreateInviteResponse,
+  CreateUploadBody,
+  CreateUploadResponse,
   FamilyDetail,
   Instance,
   InstanceActionBody,
@@ -99,9 +101,15 @@ export function createApi(http: HttpClient) {
       http.request<InstanceDetail>("GET", `${f(familyId)}/instances/${instanceId}`),
     act: (familyId: string, instanceId: string, action: InstanceActionBody["action"]) =>
       http.request<Instance>("POST", `${f(familyId)}/instances/${instanceId}/actions`, { action }),
-    submit: (familyId: string, instanceId: string, checklist: SubmitBody["checklist"]) =>
+    submit: (
+      familyId: string,
+      instanceId: string,
+      checklist: SubmitBody["checklist"],
+      photoUploadIds: string[] = [],
+    ) =>
       http.request<SubmitResponse>("POST", `${f(familyId)}/instances/${instanceId}/submissions`, {
         checklist,
+        photoUploadIds,
       }),
     instances: (
       familyId: string,
@@ -122,6 +130,10 @@ export function createApi(http: HttpClient) {
         `${f(familyId)}/submissions/${submissionId}/review`,
         body,
       ),
+    // Photos: an upload form for a direct upload to storage (see features/photos/upload.ts).
+    createUpload: (familyId: string, body: CreateUploadBody) =>
+      http.request<CreateUploadResponse>("POST", `${f(familyId)}/uploads`, body),
+
     batchApprove: (familyId: string, submissionIds: string[]) =>
       http.request<BatchApproveResponse>("POST", `${f(familyId)}/review-queue/approve`, {
         submissionIds,

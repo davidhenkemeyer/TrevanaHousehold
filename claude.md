@@ -30,7 +30,7 @@
 - **API:** Node + Fastify 5 + Zod 4 via `fastify-type-provider-zod`. Request/response schemas live in `packages/contracts`. (ts-rest was dropped: unmaintained, Zod 3 only.)
 - **DB:** PostgreSQL 16 via Prisma 7 (driver adapter `@prisma/adapter-pg`, config in `apps/api/prisma.config.ts`). Jobs via pg-boss (Step 4).
 - **Auth:** argon2id password/PIN hashes (`@node-rs/argon2`), 15-min HS256 access JWTs (`jose`), rotating single-use refresh tokens stored as SHA-256 hashes.
-- **Storage / push:** S3-compatible photo storage (MinIO locally); Expo Push Notifications.
+- **Storage / push:** S3-compatible photo storage (RustFS locally, pinned in docker-compose; MinIO no longer publishes images); Expo Push Notifications.
 - **Pinned on purpose:** TypeScript `~6.0` (typescript-eslint doesn't support TS 7 yet). Prisma `7.10.1` (npm's `latest` tag points at an 8.0 release candidate). Prisma 7 officially lists Node 20/22/24 but works on 26.
 
 ## Architecture rules
@@ -45,6 +45,7 @@
 - App screens use the components in `apps/mobile/src/components` and colors/type from `@titan/tokens` (via `src/theme.ts`); no hard-coded hex values in screens.
 - Every swipe gesture has a visible button that does the same thing (mouse, keyboard, screen readers). On the web, ignore taps that end a drag (see `features/review/ReviewCard.tsx`).
 - The API lists CORS methods explicitly (`app.ts`). A new HTTP method needs adding there, or the web app can't call it.
+- **Photos:** clients never send or receive storage keys. They upload with a form from `POST /uploads` and refer to the photo by `uploadId`; responses carry signed URLs, made only in `instances/views.ts` (`photoSigner`) and the chore DTO. Storage is `Deps.storage` (`lib/storage`); tests use the in-memory fake (`t.storage`, `t.uploadPhoto`), so CI needs no storage server. Check uploads (`checkUploads`) outside transactions and claim them (`claimUploads`) inside.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
 - Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
@@ -60,15 +61,17 @@ apps/mobile         Expo app (iOS / Android / web), Expo Router
   src/auth/         session manager (single-flight refresh), token storage
   src/components/   Titan UI building blocks (ui.tsx, forms.tsx, brand.tsx, PinPad, Celebration)
   src/features/     screen logic; the pure parts are unit-tested (today/sections, chores/form,
-                    review/queue, week/week)
+                    review/queue, week/week, photos/pins + upload)
   e2e/              Playwright web smoke test (uses installed Edge)
 packages/tokens     Titan design tokens and per-app themes
 apps/api            Fastify API + background jobs
   prisma/           schema.prisma, migrations/, seed.ts
   src/modules/      auth, families (members, kid profile switching), invites,
                     chores, instances (planning, agenda, actions, submissions), reviews,
+                    uploads (photo upload forms, attach checks),
                     rewards and notifications (hooks only until Steps 8 and 10)
-  src/jobs/         pg-boss scheduling; planning.ts and lateness.ts hold the job logic
+  src/lib/storage/  PhotoStorage interface + S3 adapter (s3.test.ts runs against local storage)
+  src/jobs/         pg-boss scheduling; planning.ts, lateness.ts, photoCleanup.ts hold the job logic
   src/worker.ts     optional standalone job worker (no HTTP)
   src/test/         test harness (useTestApp) and DB setup
 packages/domain     recurrence (+ describeRecurrence), chore state machine, scheduler and
@@ -83,11 +86,11 @@ docs/               plan, Titan suite notes
 - `pnpm install`: install everything
 - `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build`: run across all packages via Turborepo
 - `pnpm format` (writes) / `pnpm format:check` (CI)
-- `pnpm db:up` / `pnpm db:down`: start/stop Postgres + MinIO (needs Docker Desktop running)
+- `pnpm db:up` / `pnpm db:down`: start/stop Postgres + photo storage (RustFS; needs Docker Desktop running)
 - `pnpm --filter @titan/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
 - `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`
 - `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
-- `pnpm --filter @titan/api job:plan` / `job:mark-late`: run a background job once, now
+- `pnpm --filter @titan/api job:plan` / `job:mark-late` / `job:cleanup-photos`: run a background job once, now
 - `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
 - `pnpm --filter @titan/mobile start`: Expo dev server (scan the QR code with Expo Go; the phone finds the API on this computer's LAN address). `web` opens it in a browser.
 - `pnpm --filter @titan/mobile export:web` then `pnpm --filter @titan/mobile exec expo serve --port 8081`: static web build

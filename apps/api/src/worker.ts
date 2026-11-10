@@ -7,11 +7,15 @@ import pino from "pino";
 import { loadConfig } from "./config.js";
 import { createDb } from "./db.js";
 import { startJobs } from "./jobs/index.js";
+import { createS3Storage } from "./lib/storage/s3.js";
 
 const config = loadConfig();
 const log = pino({ level: config.logLevel });
 const db = createDb(config.databaseUrl);
-const jobs = await startJobs({ config, db, now: () => new Date() }, log);
+const jobs = await startJobs(
+  { config, db, storage: createS3Storage(config.storage), now: () => new Date() },
+  log,
+);
 
 const shutdown = async (signal: string) => {
   log.info({ signal }, "Worker shutting down");

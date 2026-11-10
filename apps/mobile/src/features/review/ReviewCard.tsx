@@ -10,6 +10,7 @@ import type { ReviewQueueItem } from "@titan/contracts";
 import { useEffect, useMemo, useRef } from "react";
 import { Animated, PanResponder, Pressable, StyleSheet, View } from "react-native";
 import { AppText, Avatar, Button, Card, Chip } from "../../components/ui";
+import { PhotoThumb } from "../photos/PhotoViews";
 import { colors, radii, spacing } from "../../theme";
 
 /** How far (px) a drag must go to count as a swipe. */
@@ -24,12 +25,14 @@ export function ReviewCard({
   onApprove,
   onNeedsWork,
   onOpen,
+  onViewPhoto,
 }: {
   item: ReviewQueueItem;
   busy: boolean;
   onApprove: () => void;
   onNeedsWork: () => void;
   onOpen: () => void;
+  onViewPhoto: (url: string, title: string) => void;
 }) {
   const x = useRef(new Animated.Value(0)).current;
   // Latest callbacks, so the responder (created once) never calls stale ones.
@@ -127,6 +130,28 @@ export function ReviewCard({
             {instance.rewardAmount > 0 && <Chip label={`REWARD ${instance.rewardAmount}`} />}
             {!item.batchEligible && <Chip label="REVIEW EACH" color={colors.info} />}
           </View>
+
+          {(submission.photos.length > 0 || instance.referencePhotoUrl) && (
+            <View style={{ flexDirection: "row", gap: spacing.md, flexWrap: "wrap" }}>
+              {submission.photos.map((photo, i) => (
+                <PhotoThumb
+                  key={photo.url}
+                  url={photo.url}
+                  label={submission.photos.length > 1 ? `Photo ${i + 1}` : "Their photo"}
+                  onPress={tap(() =>
+                    onViewPhoto(photo.url, `${submission.submittedBy.displayName}'s photo`),
+                  )}
+                />
+              ))}
+              {instance.referencePhotoUrl && (
+                <PhotoThumb
+                  url={instance.referencePhotoUrl}
+                  label="Reference"
+                  onPress={tap(() => onViewPhoto(instance.referencePhotoUrl!, "Reference photo"))}
+                />
+              )}
+            </View>
+          )}
 
           {skipped.length > 0 && (
             <AppText variant="caption" color={colors.textMuted}>

@@ -18,7 +18,12 @@ import { dbDateToPlain } from "../../lib/dates.js";
 import { requireParent } from "../access.js";
 import { loadInstance } from "../instances/service.js";
 import { transition } from "../instances/transitions.js";
-import { submissionInclude, toReviewDto, toSubmissionDto } from "../instances/views.js";
+import {
+  photoSigner,
+  submissionInclude,
+  toReviewDto,
+  toSubmissionDto,
+} from "../instances/views.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -61,17 +66,21 @@ export async function getReviewQueue(
       take: query.limit + 1,
       include: {
         ...submissionInclude,
-        instance: { include: { chore: { select: { name: true, reviewPolicy: true } } } },
+        instance: {
+          include: {
+            chore: { select: { name: true, reviewPolicy: true, referencePhotoKey: true } },
+          },
+        },
       },
     }),
   ]);
 
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
-  return {
-    total,
-    items: page.map((s) => ({
-      submission: toSubmissionDto(s),
+  const sign = photoSigner(deps);
+  const items = await Promise.all(
+    page.map(async (s) => ({
+      submission: await toSubmissionDto(s, sign),
       instance: {
         id: s.instance.id,
         choreId: s.instance.choreId,
@@ -80,9 +89,16 @@ export async function getReviewQueue(
         isLate: s.instance.isLate,
         rewardAmount: s.instance.rewardAmount,
         reviewPolicy: s.instance.chore.reviewPolicy,
+        referencePhotoUrl: s.instance.chore.referencePhotoKey
+          ? await sign(s.instance.chore.referencePhotoKey)
+          : null,
       },
       batchEligible: canBatchApprove(s.instance.status, s.instance.chore.reviewPolicy),
     })),
+  );
+  return {
+    total,
+    items,
     nextCursor:
       rows.length > query.limit && last
         ? encodeCursor({ t: last.submittedAt.toISOString(), id: last.id })
@@ -179,10 +195,13 @@ export async function reviewSubmission(
       false,
     );
     return {
-      instance: await loadInstance(tx, familyId, instanceId, {
-        membershipId: parent.id,
-        role: "PARENT",
-      }),
+      instance: await loadInstance(
+        tx,
+        familyId,
+        instanceId,
+        { membershipId: parent.id, role: "PARENT" },
+        photoSigner(deps),
+      ),
       review: toReviewDto(review),
     };
   });

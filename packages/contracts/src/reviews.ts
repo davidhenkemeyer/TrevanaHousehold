@@ -47,6 +47,8 @@ export const reviewQueueItemSchema = z.object({
     isLate: z.boolean(),
     rewardAmount: z.int(),
     reviewPolicy: z.enum(REVIEW_POLICIES),
+    /** Shown next to the submitted photo. */
+    referencePhotoUrl: z.string().nullable(),
   }),
   /** Included by "Approve all low-stakes". */
   batchEligible: z.boolean(),

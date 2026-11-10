@@ -10,6 +10,14 @@ import { Pressable, View } from "react-native";
 import { GradientHeader } from "../../../src/components/brand";
 import { Screen, errorMessage } from "../../../src/components/Screen";
 import { AppText, Button, Card, Chip, ErrorText } from "../../../src/components/ui";
+import { type Pin, pinsOf } from "../../../src/features/photos/pins";
+import {
+  ExpiredPhoto,
+  PhotoThumb,
+  PhotoViewer,
+  PhotoWithPins,
+  PinList,
+} from "../../../src/features/photos/PhotoViews";
 import { DecisionSheet } from "../../../src/features/review/DecisionSheet";
 import { dueLabel } from "../../../src/features/today/sections";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
@@ -48,6 +56,7 @@ export default function ChoreDetail() {
   const queryClient = useQueryClient();
   const { familyId, role } = useFamily();
   const [needsWork, setNeedsWork] = useState(false);
+  const [viewing, setViewing] = useState<{ url: string; pins: Pin[] } | null>(null);
   const detail = useQuery({
     queryKey: ["instance", familyId, id],
     queryFn: () => api.instance(familyId!, id),
@@ -133,6 +142,19 @@ export default function ChoreDetail() {
                 ))}
               </View>
             )}
+            {d.referencePhotoUrl && (
+              <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
+                <PhotoThumb
+                  url={d.referencePhotoUrl}
+                  size={72}
+                  accessibilityLabel="What done looks like"
+                  onPress={() => setViewing({ url: d.referencePhotoUrl!, pins: [] })}
+                />
+                <AppText color={colors.textMuted} style={{ flex: 1 }}>
+                  What done looks like
+                </AppText>
+              </View>
+            )}
           </Card>
 
           {d.submissions.length > 0 && (
@@ -150,6 +172,27 @@ export default function ChoreDetail() {
                       label={`${s.checklistSummary.checked}/${s.checklistSummary.total} STEPS`}
                     />
                   )}
+                  {s.photosExpired && <ExpiredPhoto />}
+                  {s.photos.map((photo) => {
+                    // Pins from the latest review that marked this photo up.
+                    const pins = pinsOf(
+                      [...s.reviews].reverse().find((r) => r.annotations)?.annotations,
+                    );
+                    return (
+                      <View key={photo.url} style={{ gap: spacing.sm }}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            pins.length > 0 ? "Open the marked-up photo" : "Open photo"
+                          }
+                          onPress={() => setViewing({ url: photo.url, pins })}
+                        >
+                          <PhotoWithPins url={photo.url} pins={pins} maxHeight={280} />
+                        </Pressable>
+                        <PinList pins={pins} />
+                      </View>
+                    );
+                  })}
                   {s.reviews.map((r) => (
                     <View key={r.id} style={{ gap: spacing.xxs }}>
                       <AppText
@@ -201,6 +244,7 @@ export default function ChoreDetail() {
                 key: pending.id,
                 childName: pending.submittedBy.displayName,
                 choreName: d.choreName,
+                photoUrl: pending.photos[0]?.url ?? null,
               }
             : null
         }
@@ -208,6 +252,11 @@ export default function ChoreDetail() {
         error={needsWork ? errorMessage(review.error) : null}
         onSubmit={(body) => review.mutate(body)}
         onClose={() => setNeedsWork(false)}
+      />
+      <PhotoViewer
+        url={viewing?.url ?? null}
+        pins={viewing?.pins ?? []}
+        onClose={() => setViewing(null)}
       />
     </Screen>
   );

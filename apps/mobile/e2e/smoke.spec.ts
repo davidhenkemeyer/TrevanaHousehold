@@ -251,3 +251,154 @@ test("parent creates a chore, balances time, and reviews the kid's work", async 
   await expect(text(page, "All caught up!")).toBeVisible();
   await shot(page, "17-approved");
 });
+
+/** A small solid-color PNG standing in for a camera photo (64 × 48, amber). */
+function testPhoto(): Buffer {
+  // Minimal PNG encoder: one IDAT with uncompressed (stored) deflate blocks.
+  const width = 64;
+  const height = 48;
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const byte of buf) c = crcTable[(c ^ byte) & 0xff]! ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const out = Buffer.alloc(body.length + 8);
+    out.writeUInt32BE(data.length, 0);
+    body.copy(out, 4);
+    out.writeUInt32BE(crc(body), body.length + 4);
+    return out;
+  };
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0)]);
+  for (let x = 0; x < width; x++) row.set([0xd9, 0x77, 0x06], 1 + x * 3);
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  // zlib header, one stored block, adler32.
+  let a = 1;
+  let b = 0;
+  for (const byte of raw) {
+    a = (a + byte) % 65521;
+    b = (b + a) % 65521;
+  }
+  const len = Buffer.alloc(4);
+  len.writeUInt16LE(raw.length, 0);
+  len.writeUInt16LE(~raw.length & 0xffff, 2);
+  const adler = Buffer.alloc(4);
+  adler.writeUInt32BE(((b << 16) | a) >>> 0, 0);
+  const idat = Buffer.concat([Buffer.from([0x78, 0x01, 0x01]), len, raw, adler]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8); // 8-bit RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", idat),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+test("photo proof: reference photo, required photo, and pins on review", async ({ page }) => {
+  const email = `e2e-photos-${Date.now()}@example.com`;
+  const password = "correct horse battery";
+  const tab = (name: string) => visible(page.getByRole("tab", { name: new RegExp(name) }));
+  const switchTo = async (name: string, pin?: string) => {
+    await tab("Me").click();
+    await button(page, "Switch person").click();
+    await button(page, name).click();
+    if (pin !== undefined) {
+      for (const digit of pin) await button(page, digit).click();
+      await button(page, "Done").click();
+    }
+  };
+  const attachPhoto = async (buttonName: string) => {
+    const chooser = page.waitForEvent("filechooser");
+    await button(page, buttonName).click();
+    await (
+      await chooser
+    ).setFiles({ name: "photo.png", mimeType: "image/png", buffer: testPhoto() });
+    // The thumbnail appears at once; wait until its upload has finished.
+    await expect(visible(page.getByRole("button", { name: "Remove photo" }))).toBeVisible();
+    await expect(
+      page.getByText("Uploading", { exact: true }).filter({ visible: true }),
+    ).toHaveCount(0, { timeout: 15_000 });
+  };
+
+  const { tokens } = await api<{ tokens: { accessToken: string } }>("/v1/auth/signup", {
+    method: "POST",
+    body: { email, password, displayName: "Mom" },
+  });
+  const token = tokens.accessToken;
+  const created = await api<{ family: { id: string }; members: { id: string }[] }>("/v1/families", {
+    method: "POST",
+    token,
+    body: { name: "The Photographers", timeZone: "America/Chicago" },
+  });
+  const familyId = created.family.id;
+  await api(`/v1/families/${familyId}/children`, {
+    method: "POST",
+    token,
+    body: { displayName: "Billy" },
+  });
+  await api(`/v1/families/${familyId}/members/${created.members[0]!.id}`, {
+    method: "PATCH",
+    token,
+    body: { pin: "4321" },
+  });
+
+  await page.goto("/");
+  await field(page, "Email").fill(email);
+  await field(page, "Password").fill(password);
+  await button(page, "Sign in").click();
+
+  // The editor: a chore that needs a photo, with a reference photo.
+  await tab("Chores").click();
+  await button(page, "New chore").click();
+  await field(page, "Name").fill("Make your bed");
+  await button(page, "Always the same").click();
+  await button(page, "Billy").click();
+  await visible(page.getByRole("switch", { name: "Needs a photo" })).click();
+  await attachPhoto("Add photo");
+  await shot(page, "20-reference");
+  await button(page, "Add chore").click();
+  await expect(text(page, "Make your bed", true)).toBeVisible();
+
+  // Billy can't finish without a photo.
+  await switchTo("Billy");
+  await button(page, "Done ✓").click();
+  await expect(text(page, "Make it look like this.")).toBeVisible();
+  await expect(button(page, "Add a photo first")).toBeDisabled();
+  await attachPhoto("Add photo");
+  await shot(page, "21-proof");
+  await button(page, "All done! ✓").click();
+  await expect(text(page, /Waiting for review · 1/)).toBeVisible();
+
+  // Mom sees both photos, drops a pin, and sends it back.
+  await switchTo("Mom", "4321");
+  await tab("Review").click();
+  await expect(text(page, "Their photo")).toBeVisible();
+  await expect(text(page, "Reference")).toBeVisible();
+  await shot(page, "22-review-photos");
+  await button(page, "Needs work").click();
+  await button(page, "Mark up the photo").click();
+  const photo = visible(page.getByRole("button", { name: "Photo: tap to add a pin" }));
+  await photo.click({ position: { x: 60, y: 40 } });
+  await field(page, "Pin 1").fill("Pillow goes at the top");
+  await page.waitForTimeout(400); // let the viewer finish fading in
+  await shot(page, "23-markup");
+  await button(page, "Done").click();
+  await expect(button(page, "Mark up the photo (1 pin)")).toBeVisible();
+  await button(page, "Send back").click();
+  await expect(text(page, "All caught up!")).toBeVisible();
+
+  // Billy sees where.
+  await switchTo("Billy");
+  await button(page, "See the spot marked on your photo ›").click();
+  await expect(text(page, "Pillow goes at the top")).toBeVisible();
+  await shot(page, "24-pins-for-kid");
+});

@@ -34,6 +34,7 @@ function chore(overrides: Partial<Chore> = {}): Chore {
     assignMode: "FIXED",
     eligibleMembershipIds: [BILLY],
     checklist: [{ id: "44444444-4444-4444-8444-444444444444", text: "Rinse" }],
+    referencePhotoUrl: null,
     active: true,
     createdAt: "2026-11-01T00:00:00.000Z",
     updatedAt: "2026-11-01T00:00:00.000Z",
@@ -112,6 +113,21 @@ describe("formFromChore / toUpdateBody", () => {
       name: "Dishes!",
       recurrence: { freq: "WEEKLY", startDate: TUESDAY, byWeekday: [2, 5] },
     });
+  });
+
+  it("sends reference photo changes", () => {
+    const original = chore();
+    const f = formFromChore(original);
+    expect(
+      toUpdateBody({ ...f, referencePhoto: { kind: "new", uploadId: "u1" } }, original),
+    ).toEqual({ referencePhotoUploadId: "u1" });
+    expect(toUpdateBody({ ...f, referencePhoto: { kind: "remove" } }, original)).toEqual({
+      referencePhotoUploadId: null,
+    });
+    expect(toChoreBody(form({ referencePhoto: { kind: "new", uploadId: "u2" } }))).toMatchObject({
+      referencePhotoUploadId: "u2",
+    });
+    expect(toChoreBody(form())).not.toHaveProperty("referencePhotoUploadId");
   });
 
   it("keeps a custom deadline when the start time changes", () => {

@@ -57,11 +57,20 @@ export default function Today() {
   });
 
   const submit = useMutation({
-    mutationFn: ({ item, checked }: { item: Instance; checked: Record<string, boolean> }) =>
+    mutationFn: ({
+      item,
+      checked,
+      photoUploadIds = [],
+    }: {
+      item: Instance;
+      checked: Record<string, boolean>;
+      photoUploadIds?: string[];
+    }) =>
       api.submit(
         familyId!,
         item.id,
         item.checklist.map((step) => ({ itemId: step.id, checked: checked[step.id] ?? false })),
+        photoUploadIds,
       ),
     onSuccess: () => {
       setCompleting(null);
@@ -76,10 +85,13 @@ export default function Today() {
   const onAction = (item: Instance, action: CardAction) => {
     if (action === "complete") {
       submit.reset();
-      if (item.checklist.length > 0) setCompleting(item);
+      // A checklist or a required photo needs the sheet; otherwise one tap is enough.
+      // (A parent completing needs no photo, per the API's rules.)
+      const needsPhoto = item.requiresPhoto && role !== "PARENT";
+      if (item.checklist.length > 0 || needsPhoto) setCompleting(item);
       else {
         setBusyId(item.id);
-        submit.mutate({ item, checked: {} }); // no checklist: one tap is enough
+        submit.mutate({ item, checked: {} });
       }
       return;
     }
@@ -156,9 +168,12 @@ export default function Today() {
 
       <CompleteSheet
         item={completing}
+        photoRequired={completing?.requiresPhoto === true && role !== "PARENT"}
         submitting={submit.isPending}
         error={completing ? errorMessage(submit.error) : null}
-        onSubmit={(checked) => completing && submit.mutate({ item: completing, checked })}
+        onSubmit={(checked, photoUploadIds) =>
+          completing && submit.mutate({ item: completing, checked, photoUploadIds })
+        }
         onClose={() => setCompleting(null)}
       />
       <Celebration burstKey={burst} />

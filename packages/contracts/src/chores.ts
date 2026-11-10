@@ -76,6 +76,8 @@ export const createChoreBodySchema = z
     assignMode: fields.assignMode,
     eligibleMembershipIds: fields.eligibleMembershipIds.default([]),
     checklist: fields.checklist.default([]),
+    /** From POST /uploads (purpose REFERENCE). */
+    referencePhotoUploadId: idSchema.optional(),
   })
   .refine((c) => c.assignMode !== "FIXED" || c.eligibleMembershipIds.length > 0, {
     message: "A FIXED chore needs at least one owner",
@@ -97,6 +99,8 @@ export const updateChoreBodySchema = z.strictObject({
   assignMode: fields.assignMode.optional(),
   eligibleMembershipIds: fields.eligibleMembershipIds.optional(),
   checklist: fields.checklist.optional(),
+  /** A new reference photo (from POST /uploads, purpose REFERENCE), or null to remove it. */
+  referencePhotoUploadId: idSchema.nullable().optional(),
 });
 export type UpdateChoreBody = z.infer<typeof updateChoreBodySchema>;
 
@@ -118,6 +122,8 @@ export const choreSchema = z.object({
   assignMode: z.enum(ASSIGN_MODES),
   eligibleMembershipIds: z.array(idSchema),
   checklist: z.array(checklistItemSchema),
+  /** Signed URL of the reference ("golden standard") photo. */
+  referencePhotoUrl: z.string().nullable(),
   active: z.boolean(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,

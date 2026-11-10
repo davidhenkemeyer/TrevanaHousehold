@@ -27,10 +27,13 @@ import { dbDateToPlain, plainToDbDate } from "../../lib/dates.js";
 import { requireMember, requireParent } from "../access.js";
 import { type DbOrTx, familyToday, replanUntouched } from "./generate.js";
 import { transition } from "./transitions.js";
+import { checkUploads, claimUploads } from "../uploads/service.js";
 import {
+  type SignPhoto,
   type Viewer,
   detailExtras,
   instanceInclude,
+  photoSigner,
   submissionInclude,
   toInstanceDetailDto,
   toInstanceDto,
@@ -57,13 +60,14 @@ export async function loadInstance(
   familyId: string,
   instanceId: string,
   viewer: Viewer,
+  sign: SignPhoto,
 ): Promise<Instance> {
   const row = await db.choreInstance.findFirst({
     where: { id: instanceId, familyId },
     include: instanceInclude,
   });
   if (!row) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
-  return toInstanceDto(row, viewer);
+  return toInstanceDto(row, viewer, sign);
 }
 
 /** The Today view: the date's chores plus anything still outstanding from earlier days. */
@@ -88,14 +92,13 @@ export async function getAgenda(
     include: instanceInclude,
   });
   const viewer = viewerOf(member);
-  const items = rows
-    .map((row) => toInstanceDto(row, viewer))
-    .sort(
-      (a, b) =>
-        priorityRank(b.priority) - priorityRank(a.priority) ||
-        a.dueAt.localeCompare(b.dueAt) ||
-        a.choreName.localeCompare(b.choreName),
-    );
+  const sign = photoSigner(deps);
+  const items = (await Promise.all(rows.map((row) => toInstanceDto(row, viewer, sign)))).sort(
+    (a, b) =>
+      priorityRank(b.priority) - priorityRank(a.priority) ||
+      a.dueAt.localeCompare(b.dueAt) ||
+      a.choreName.localeCompare(b.choreName),
+  );
   return { date, items };
 }
 
@@ -145,7 +148,7 @@ export async function listInstances(
   const last = page.at(-1);
   const viewer = viewerOf(member);
   return {
-    items: page.map((row) => toInstanceDto(row, viewer)),
+    items: await Promise.all(page.map((row) => toInstanceDto(row, viewer, photoSigner(deps)))),
     nextCursor:
       rows.length > query.limit && last
         ? encodeCursor({ d: last.occurrenceDate.toISOString(), id: last.id })
@@ -166,7 +169,7 @@ export async function getInstanceDetail(
     deps.db.choreInstance.findFirst({ where, include: detailExtras }),
   ]);
   if (!row || !history) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
-  return toInstanceDetailDto(row, history, viewerOf(member));
+  return toInstanceDetailDto(row, history, viewerOf(member), photoSigner(deps));
 }
 
 /** start / defer / reset / cancel. */
@@ -186,7 +189,7 @@ export async function actOnInstance(
       actor: member,
       now: deps.now(),
     });
-    return loadInstance(tx, familyId, instanceId, viewerOf(member));
+    return loadInstance(tx, familyId, instanceId, viewerOf(member), photoSigner(deps));
   });
 }
 
@@ -204,6 +207,13 @@ export async function submitInstance(
 ): Promise<SubmitResponse> {
   const member = await requireMember(deps.db, familyId, userId);
   const now = deps.now();
+  // Storage checks happen before the transaction; claiming happens inside it.
+  const photos = await checkUploads(deps, {
+    familyId,
+    member,
+    purpose: "SUBMISSION",
+    uploadIds: body.photoUploadIds,
+  });
   return deps.db.$transaction(async (tx) => {
     const instance = await tx.choreInstance.findFirst({
       where: { id: instanceId, familyId },
@@ -226,9 +236,10 @@ export async function submitInstance(
       instanceId,
       action: "complete",
       actor: member,
-      hasPhoto: false, // photo uploads arrive in Step 7
+      hasPhoto: photos.length > 0,
       now,
     });
+    await claimUploads(tx, photos, now);
 
     const submission = await tx.submission.create({
       data: {
@@ -240,6 +251,7 @@ export async function submitInstance(
           text: item.text,
           checked: checked.get(item.id) ?? false,
         })),
+        photoKeys: photos.map((p) => p.key),
       },
     });
     if (result.status === "APPROVED") {
@@ -258,9 +270,10 @@ export async function submitInstance(
       where: { id: submission.id },
       include: submissionInclude,
     });
+    const sign = photoSigner(deps);
     return {
-      instance: await loadInstance(tx, familyId, instanceId, viewerOf(member)),
-      submission: toSubmissionDto(fullSubmission),
+      instance: await loadInstance(tx, familyId, instanceId, viewerOf(member), sign),
+      submission: await toSubmissionDto(fullSubmission, sign),
     };
   });
 }

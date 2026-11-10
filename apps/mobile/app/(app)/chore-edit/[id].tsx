@@ -52,6 +52,13 @@ import {
   toUpdateBody,
   validateChoreForm,
 } from "../../../src/features/chores/form";
+import {
+  type PickedItem,
+  PhotoPicker,
+  isUploading,
+  readyUploadIds,
+} from "../../../src/features/photos/PhotoPicker";
+import { PhotoThumb } from "../../../src/features/photos/PhotoViews";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
 
@@ -117,6 +124,9 @@ export default function ChoreEditor() {
   const [form, setForm] = useState<ChoreForm | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  // Reference photo: a newly picked one (uploads right away), or removal of the current one.
+  const [newReference, setNewReference] = useState<PickedItem[]>([]);
+  const [removeReference, setRemoveReference] = useState(false);
 
   // Fill the form once: a blank chore starting today, or the loaded chore.
   useEffect(() => {
@@ -179,9 +189,19 @@ export default function ChoreEditor() {
       : customDeadline !== null
         ? "custom"
         : String(deadline.minutes);
+  const referenceUploadId = readyUploadIds(newReference)[0];
+  const referenceUploading = isUploading(newReference);
+  const currentReference = removeReference ? null : (existing.data?.referencePhotoUrl ?? null);
   const onSave = () => {
     setShowErrors(true);
-    if (!hasErrors) save.mutate({ f: form, original: existing.data });
+    if (hasErrors || referenceUploading) return;
+    const referencePhoto: ChoreForm["referencePhoto"] =
+      referenceUploadId !== undefined
+        ? { kind: "new", uploadId: referenceUploadId }
+        : removeReference
+          ? { kind: "remove" }
+          : { kind: "unchanged" };
+    save.mutate({ f: { ...form, referencePhoto }, original: existing.data });
   };
 
   return (
@@ -397,6 +417,24 @@ export default function ChoreEditor() {
         <FieldError message={shown.checklist} />
       </Section>
 
+      <Section
+        title="Reference photo"
+        hint="Optional. Shows kids what done looks like, and sits next to their photo when you review."
+      >
+        {newReference.length === 0 && currentReference !== null && (
+          <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
+            <PhotoThumb url={currentReference} accessibilityLabel="Current reference photo" />
+            <Button
+              title="Remove"
+              variant="ghost"
+              accessibilityLabel="Remove reference photo"
+              onPress={() => setRemoveReference(true)}
+            />
+          </View>
+        )}
+        <PhotoPicker purpose="REFERENCE" max={1} items={newReference} onChange={setNewReference} />
+      </Section>
+
       <Section title="Checking it" hint={REVIEW_HINT[form.reviewPolicy]}>
         <ChoiceChips
           options={[
@@ -409,7 +447,7 @@ export default function ChoreEditor() {
         />
         <ToggleRow
           label="Needs a photo"
-          hint="Photo proof arrives in an upcoming update; this setting is saved for then."
+          hint="Kids add a photo when they finish. (A parent marking it done doesn't need one.)"
           value={form.requiresPhoto}
           onChange={(requiresPhoto) => update({ requiresPhoto })}
         />
@@ -435,7 +473,8 @@ export default function ChoreEditor() {
       )}
       <ErrorText message={errorMessage(save.error)} />
       <Button
-        title={isNew ? "Add chore" : "Save changes"}
+        title={referenceUploading ? "Uploading photo…" : isNew ? "Add chore" : "Save changes"}
+        disabled={referenceUploading}
         onPress={onSave}
         loading={save.isPending}
       />

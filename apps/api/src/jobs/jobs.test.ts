@@ -131,7 +131,12 @@ describe("background jobs", () => {
   describe("pg-boss wiring", () => {
     it("registers both schedules and stops cleanly", async () => {
       const jobs = await startJobs(
-        { db: t.db, now: () => clock, config: { databaseUrl: testDatabaseUrl() } },
+        {
+          db: t.db,
+          storage: t.storage,
+          now: () => clock,
+          config: { databaseUrl: testDatabaseUrl(), photoRetentionDays: 90 },
+        },
         t.app.log,
         { schema: "pgboss_test" },
       );
@@ -141,6 +146,7 @@ describe("background jobs", () => {
           [
             [JOBS.markLate.name, JOBS.markLate.cron],
             [JOBS.planFamilies.name, JOBS.planFamilies.cron],
+            [JOBS.cleanUpPhotos.name, JOBS.cleanUpPhotos.cron],
           ].sort(),
         );
       } finally {
