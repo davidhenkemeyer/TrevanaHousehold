@@ -49,15 +49,18 @@
 
 ```
 apps/mobile         Expo app (planned, Step 5)
-apps/api            Fastify API (+ background jobs in Step 4)
+apps/api            Fastify API + background jobs
   prisma/           schema.prisma, migrations/, seed.ts
   src/modules/      auth, families (members, kid profile switching), invites,
                     chores, instances (planning, agenda, actions, submissions), reviews,
-                    rewards (hooks only until Step 8)
+                    rewards and notifications (hooks only until Steps 8 and 10)
+  src/jobs/         pg-boss scheduling; planning.ts and lateness.ts hold the job logic
+  src/worker.ts     optional standalone job worker (no HTTP)
   src/test/         test harness (useTestApp) and DB setup
 packages/domain     recurrence, chore state machine, scheduler, points, defaults
 packages/contracts  shared Zod request/response schemas
-docs/               plan and design notes
+assets/brand/       app icons per Titan app (SVG masters; see each folder's README)
+docs/               plan, Titan suite notes
 ```
 
 ## Commands (run from the repo root)
@@ -69,6 +72,8 @@ docs/               plan and design notes
 - `pnpm --filter @titan/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
 - `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`
 - `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
+- `pnpm --filter @titan/api job:plan` / `job:mark-late`: run a background job once, now
+- `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
 - Single package: `pnpm --filter @titan/domain test`
 
 API tests need Postgres running. They use a separate `chores_test` database that the test setup creates and migrates automatically, and they wipe it between tests. Use the `useTestApp()` harness; it provides a controllable clock (`t.advance(ms)`). Remember that advancing past 15 minutes expires access tokens, so call `t.refresh(session)` afterwards.

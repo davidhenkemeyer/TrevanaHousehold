@@ -265,7 +265,10 @@ Adapted rather than copied:
    - Status changes all go through one transition helper that enforces the domain state machine, rejects stale concurrent updates (409), and writes audit events.
    - Submissions (with checklist state) and reviews (approve / rework / reject, note, pin annotations); paginated review queue and batch approve.
    - **As built:** planning (turning chores into dated, assigned occurrences for the next 7 days) lives in Step 3, so a new chore appears immediately. Edits re-plan only untouched future occurrences (still NEW, never acted on); archiving removes those and keeps history. Capacity changes and member removal also re-plan.
-4. **Jobs**: pg-boss setup, the nightly planning run (reusing Step 3's planner), and the late-marking job, with integration tests against a real Postgres.
+4. ✅ **Jobs** (pg-boss, in its own `pgboss` schema)
+   - Planning runs **hourly** for every family (idempotent, so it covers each family's local midnight without per-time-zone schedules), one transaction per family so one failure never blocks the rest.
+   - Late marking runs every 5 minutes: flags overdue outstanding chores once, records a system event, and calls the notification hook (filled in by Step 10).
+   - Jobs run inside the API by default (`RUN_JOBS=true`) or in a separate worker process; pg-boss's singleton queues keep runs from overlapping across processes. `job:plan` and `job:mark-late` run them by hand.
 5. **App shell + Today view**
    - Titan design tokens package (colors, type, spacing, component styles) and the app theme built on it. App name "Titan Household" and store bundle IDs.
    - Expo app with auth screens, family onboarding, and "who's using this device?".

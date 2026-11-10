@@ -12,6 +12,8 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   CORS_ORIGINS: z.string().default(""),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  // Run scheduled jobs in this process. Set "false" when a separate worker (src/worker.ts) runs them.
+  RUN_JOBS: z.enum(["true", "false"]).default("true"),
 });
 
 export interface AppConfig {
@@ -23,6 +25,8 @@ export interface AppConfig {
   logLevel: z.infer<typeof envSchema>["LOG_LEVEL"];
   /** Per-route rate limits on auth endpoints. Tests turn this off. */
   rateLimitEnabled: boolean;
+  /** Whether server.ts starts the background jobs (see src/jobs). */
+  runJobs: boolean;
   accessTokenTtlSeconds: number;
   refreshTokenTtlDays: number;
   inviteTtlDays: number;
@@ -45,6 +49,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .filter(Boolean),
     logLevel: e.LOG_LEVEL,
     rateLimitEnabled: true,
+    runJobs: e.RUN_JOBS === "true",
     accessTokenTtlSeconds: 15 * 60,
     // Long, because kids stay signed in on family tablets. Rotation limits the damage of a leak.
     refreshTokenTtlDays: 60,
