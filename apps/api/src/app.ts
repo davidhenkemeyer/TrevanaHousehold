@@ -19,6 +19,7 @@ import { createAccessTokenService } from "./lib/accessTokens.js";
 import { authRoutes, meRoutes } from "./modules/auth/routes.js";
 import { choreRoutes } from "./modules/chores/routes.js";
 import { instanceRoutes } from "./modules/instances/routes.js";
+import { pairingPublicRoutes, pairingRoutes } from "./modules/pairing/routes.js";
 import { reviewRoutes } from "./modules/reviews/routes.js";
 import { familyRoutes } from "./modules/families/routes.js";
 import { inviteRoutes } from "./modules/invites/routes.js";
@@ -72,6 +73,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       await v1.register(meRoutes, { deps });
       await v1.register(familyRoutes, { deps });
       await v1.register(inviteRoutes, { deps });
+      await v1.register(pairingRoutes, { deps });
+      await v1.register(pairingPublicRoutes, { deps });
       await v1.register(choreRoutes, { deps });
       await v1.register(instanceRoutes, { deps });
       await v1.register(reviewRoutes, { deps });

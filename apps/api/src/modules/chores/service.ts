@@ -39,6 +39,7 @@ function toChoreDto(chore: ChoreRow): ChoreDto {
     id: chore.id,
     name: chore.name,
     description: chore.description,
+    cue: chore.cue,
     effortMinutes: chore.effortMinutes,
     defaultPriority: chore.defaultPriority,
     requiresPhoto: chore.requiresPhoto,
@@ -100,6 +101,7 @@ export async function createChore(
         createdById: parent.id,
         name: body.name,
         description: body.description,
+        cue: body.cue,
         effortMinutes: body.effortMinutes,
         defaultPriority: body.defaultPriority,
         requiresPhoto: body.requiresPhoto,
@@ -170,6 +172,7 @@ export async function updateChore(
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
+        ...(body.cue !== undefined && { cue: body.cue }),
         ...(body.effortMinutes !== undefined && { effortMinutes: body.effortMinutes }),
         ...(body.defaultPriority !== undefined && { defaultPriority: body.defaultPriority }),
         ...(body.requiresPhoto !== undefined && { requiresPhoto: body.requiresPhoto }),

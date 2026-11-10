@@ -6,7 +6,9 @@
  *   - Only users who can sign in with email + password may be parents. A kid
  *     profile (PIN only) can't become one, since parents approve chores and
  *     manage the family.
- *   - PINs belong to kid profiles only; becoming a parent clears the PIN.
+ *   - Any member may have a PIN, used to switch to them on a shared device.
+ *     A parent's PIN is how a shared device (a parent's phone, a family iPad)
+ *     switches back from a kid to that parent without the full password.
  */
 import type {
   AuthResponse,
@@ -159,12 +161,8 @@ export async function updateMember(
     if (nextRole === "CHILD" && target.role === "PARENT") {
       if ((await countActiveParents(tx, familyId)) <= 1) throw lastParent();
     }
-    if (nextRole === "PARENT" && typeof body.pin === "string") {
-      throw badRequest("PIN_CHILD_ONLY", "Only kid profiles have a PIN.");
-    }
-
     const pinChange: Prisma.MembershipUpdateInput =
-      nextRole === "PARENT" || body.pin === null
+      body.pin === null
         ? { pinHash: null, pinFailedAttempts: 0, pinLockedUntil: null }
         : newPinHash !== undefined
           ? { pinHash: newPinHash, pinFailedAttempts: 0, pinLockedUntil: null }
@@ -224,10 +222,15 @@ export async function removeMember(
 }
 
 /**
- * Hands the device over to a kid profile ("Who's using the tablet?").
- * Parents can switch to any kid in their family. A kid switching to a
- * sibling must enter that sibling's PIN, if one is set. Switching to a parent
- * is not allowed here: parents sign in with their password.
+ * Switches who is using a shared device ("Who's using this?").
+ *
+ *   to yourself           always allowed
+ *   to a kid              a parent needs no PIN; a kid needs that sibling's PIN, if set
+ *   to a parent           always needs that parent's PIN. A parent without a PIN
+ *                         can't be switched to: they sign in with their password.
+ *
+ * The device never keeps a parent's session while a kid uses it, so a parent's
+ * PIN (checked here, with the lockout) is the only way back short of the password.
  */
 export async function switchToMember(
   deps: Deps,
@@ -238,12 +241,17 @@ export async function switchToMember(
 ): Promise<AuthResponse> {
   const caller = await requireMember(deps.db, familyId, callerUserId);
   const target = await findActiveMember(deps.db, familyId, membershipId);
-  if (target.role !== "CHILD") {
-    throw forbidden("CANNOT_SWITCH_TO_PARENT", "Parents sign in with their email and password.");
-  }
+  const isSelf = target.userId === caller.userId;
 
-  const pinNeeded = caller.role !== "PARENT" && target.userId !== caller.userId && target.pinHash;
-  if (pinNeeded) {
+  if (!isSelf && target.role === "PARENT") {
+    if (!target.pinHash) {
+      throw forbidden(
+        "PARENT_PIN_NOT_SET",
+        "This parent hasn't set a PIN for quick switching. Sign in with email and password instead.",
+      );
+    }
+    await checkPin(deps, target, pin);
+  } else if (!isSelf && caller.role !== "PARENT" && target.pinHash) {
     await checkPin(deps, target, pin);
   }
   return { user: toUserDto(target.user), tokens: await issueSession(deps, target.userId) };

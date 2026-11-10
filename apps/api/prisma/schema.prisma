@@ -71,6 +71,8 @@ model Membership {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   choresCreated  Chore[]            @relation("ChoreCreatedBy")
+  pairingCodes   PairingCode[]      @relation("PairingCodeFor")
+  pairingsMade   PairingCode[]      @relation("PairingCodeCreatedBy")
   eligibleFor    ChoreEligible[]
   assignments    InstanceAssignee[]
   events         InstanceEvent[]
@@ -119,6 +121,25 @@ model RefreshToken {
   @@index([userId])
 }
 
+/// A one-time code that signs a kid's own phone in to their profile, so a
+/// parent's password never has to be typed on the kid's device.
+model PairingCode {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  /// The kid profile the code signs in to.
+  membershipId String    @db.Uuid
+  /// SHA-256 of the normalized code; the code itself is never stored.
+  codeHash     String    @unique
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdById  String    @db.Uuid
+  createdAt    DateTime
+
+  membership Membership @relation("PairingCodeFor", fields: [membershipId], references: [id], onDelete: Cascade)
+  createdBy  Membership @relation("PairingCodeCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([membershipId])
+}
+
 // ─── Chores ────────────────────────────────────────────────────────────────
 // Enum values must match the constants in packages/domain exactly
 // (checked by apps/api/src/modules/enums.test.ts).
@@ -164,6 +185,8 @@ model Chore {
   familyId        String       @db.Uuid
   name            String
   description     String       @default("")
+  /// Situational trigger shown on the card, e.g. "After dinner" (branding doc: implementation intentions).
+  cue             String?
   effortMinutes   Int
   defaultPriority Priority     @default(NORMAL)
   requiresPhoto   Boolean      @default(false)

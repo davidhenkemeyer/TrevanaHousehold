@@ -97,6 +97,7 @@ export function toInstanceDto(row: InstanceRow, viewer: Viewer): Instance {
     choreId: row.choreId,
     choreName: row.chore.name,
     description: row.chore.description,
+    cue: row.chore.cue,
     occurrenceDate: dbDateToPlain(row.occurrenceDate),
     availableAt: row.availableAt.toISOString(),
     dueAt: row.dueAt.toISOString(),

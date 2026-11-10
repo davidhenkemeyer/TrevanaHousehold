@@ -40,6 +40,8 @@ const MAX_DEADLINE_MINUTES = 90 * 24 * 60;
 const fields = {
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(500),
+  /** Situational trigger shown on the card, e.g. "After dinner". Null removes it. */
+  cue: z.string().trim().min(1).max(60).nullable(),
   effortMinutes: z.int().min(1).max(480),
   defaultPriority: z.enum(PRIORITIES),
   requiresPhoto: z.boolean(),
@@ -63,6 +65,7 @@ export const createChoreBodySchema = z
   .strictObject({
     name: fields.name,
     description: fields.description.default(""),
+    cue: fields.cue.default(null),
     effortMinutes: fields.effortMinutes,
     defaultPriority: fields.defaultPriority.default("NORMAL"),
     requiresPhoto: fields.requiresPhoto.default(false),
@@ -83,6 +86,7 @@ export type CreateChoreBody = z.infer<typeof createChoreBodySchema>;
 export const updateChoreBodySchema = z.strictObject({
   name: fields.name.optional(),
   description: fields.description.optional(),
+  cue: fields.cue.optional(),
   effortMinutes: fields.effortMinutes.optional(),
   defaultPriority: fields.defaultPriority.optional(),
   requiresPhoto: fields.requiresPhoto.optional(),
@@ -103,6 +107,7 @@ export const choreSchema = z.object({
   id: idSchema,
   name: z.string(),
   description: z.string(),
+  cue: z.string().nullable(),
   effortMinutes: z.int(),
   defaultPriority: z.enum(PRIORITIES),
   requiresPhoto: z.boolean(),

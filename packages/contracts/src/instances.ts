@@ -53,6 +53,8 @@ export const instanceSchema = z.object({
   choreId: idSchema,
   choreName: z.string(),
   description: z.string(),
+  /** Situational trigger, e.g. "After dinner". */
+  cue: z.string().nullable(),
   occurrenceDate: plainDateSchema,
   availableAt: isoDateTimeSchema,
   dueAt: isoDateTimeSchema,

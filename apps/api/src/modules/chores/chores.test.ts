@@ -25,6 +25,22 @@ describe("chores", () => {
   }
 
   describe("creating", () => {
+    it("stores a situational cue, shows it on occurrences, and can clear it", async () => {
+      const { mom, familyId } = await setup();
+      const chore = await t.createChore(mom, familyId, {
+        name: "Clear the table",
+        cue: "After dinner",
+      });
+      expect(chore.cue).toBe("After dinner");
+      expect((await t.agenda(mom, familyId)).items[0]?.cue).toBe("After dinner");
+
+      const cleared = await t.request("PATCH", `/v1/families/${familyId}/chores/${chore.id}`, {
+        session: mom,
+        body: { cue: null },
+      });
+      expect(cleared.json<Chore>().cue).toBeNull();
+    });
+
     it("stores the chore with defaults and its checklist", async () => {
       const { mom, familyId } = await setup();
       const chore = await t.createChore(mom, familyId, {
@@ -35,6 +51,7 @@ describe("chores", () => {
       expect(chore).toMatchObject({
         name: "Clean Bedroom Closet",
         description: "",
+        cue: null,
         defaultPriority: "NORMAL",
         requiresPhoto: false,
         reviewPolicy: "REVIEW_EACH",

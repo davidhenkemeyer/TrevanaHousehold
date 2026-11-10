@@ -149,14 +149,14 @@ describe("families and members", () => {
       expect(res.json().error.code).toBe("LAST_PARENT");
     });
 
-    it("refuses a PIN for a parent", async () => {
+    it("lets a parent set a PIN for quick switching on shared devices", async () => {
       const { mom, familyId, momMember } = await setup();
       const res = await t.request("PATCH", memberUrl(familyId, momMember.id), {
         session: mom,
         body: { pin: "4321" },
       });
-      expect(res.statusCode).toBe(400);
-      expect(res.json().error.code).toBe("PIN_CHILD_ONLY");
+      expect(res.statusCode).toBe(200);
+      expect(res.json<Member>()).toMatchObject({ role: "PARENT", hasPin: true });
     });
 
     it("404s for a member of another family", async () => {
@@ -262,11 +262,46 @@ describe("families and members", () => {
       expect((await trySwitch(billySession, familyId, sally.id, "9876")).statusCode).toBe(200);
     });
 
-    it("never switches to a parent", async () => {
+    it("can't switch to a parent who has no PIN", async () => {
       const { familyId, momMember, billySession } = await withSally();
-      const res = await trySwitch(billySession, familyId, momMember.id);
+      const res = await trySwitch(billySession, familyId, momMember.id, "1234");
       expect(res.statusCode).toBe(403);
-      expect(res.json().error.code).toBe("CANNOT_SWITCH_TO_PARENT");
+      expect(res.json().error.code).toBe("PARENT_PIN_NOT_SET");
+    });
+
+    it("hands a shared device back to a parent with the parent's PIN", async () => {
+      const { mom, familyId, momMember, billySession } = await withSally();
+      await t.request("PATCH", memberUrl(familyId, momMember.id), {
+        session: mom,
+        body: { pin: "2468" },
+      });
+      expect((await trySwitch(billySession, familyId, momMember.id)).json().error.code).toBe(
+        "PIN_REQUIRED",
+      );
+      expect((await trySwitch(billySession, familyId, momMember.id, "1111")).statusCode).toBe(401);
+      const back = await trySwitch(billySession, familyId, momMember.id, "2468");
+      expect(back.statusCode).toBe(200);
+      expect(back.json().user.displayName).toBe("Mom");
+    });
+
+    it("locks a parent's PIN after 5 wrong guesses too", async () => {
+      const { mom, familyId, momMember, billySession } = await withSally();
+      await t.request("PATCH", memberUrl(familyId, momMember.id), {
+        session: mom,
+        body: { pin: "2468" },
+      });
+      for (let i = 0; i < 5; i++) await trySwitch(billySession, familyId, momMember.id, "0000");
+      const locked = await trySwitch(billySession, familyId, momMember.id, "2468");
+      expect(locked.json().error.code).toBe("PIN_LOCKED");
+    });
+
+    it("switching to yourself never needs a PIN", async () => {
+      const { mom, familyId, momMember } = await withSally();
+      await t.request("PATCH", memberUrl(familyId, momMember.id), {
+        session: mom,
+        body: { pin: "2468" },
+      });
+      expect((await trySwitch(mom, familyId, momMember.id)).statusCode).toBe(200);
     });
   });
 });

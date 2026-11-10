@@ -38,7 +38,7 @@ export const memberSchema = z.object({
   role: roleSchema,
   capacity: weeklyCapacitySchema,
   pointsBalance: z.int(),
-  /** Kid profile has a PIN for switching on shared devices. */
+  /** Has a PIN for switching to this member on shared devices. */
   hasPin: z.boolean(),
   /** Member can sign in with email + password (parents, older kids). */
   hasLogin: z.boolean(),
@@ -65,14 +65,17 @@ export const updateMemberBodySchema = z
     avatarColor: avatarColorSchema,
     role: roleSchema,
     capacity: weeklyCapacitySchema,
-    /** Set a new PIN, or null to remove it. Kid profiles only. */
+    /** Set a new PIN, or null to remove it. Parents use theirs to take back a shared device. */
     pin: pinSchema.nullable(),
   })
   .partial();
 export type UpdateMemberBody = z.infer<typeof updateMemberBodySchema>;
 
 export const switchSessionBodySchema = z.strictObject({
-  /** Required when a kid switches to a sibling's profile that has a PIN; parents skip it. */
+  /**
+   * The target's PIN. Needed to switch to any parent, and for a kid switching
+   * to a sibling who has a PIN. A parent switching to a kid doesn't need one.
+   */
   pin: pinSchema.optional(),
 });
 export type SwitchSessionBody = z.infer<typeof switchSessionBodySchema>;

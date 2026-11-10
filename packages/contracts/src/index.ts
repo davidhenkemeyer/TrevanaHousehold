@@ -7,6 +7,7 @@ export * from "./common.js";
 export * from "./auth.js";
 export * from "./families.js";
 export * from "./invites.js";
+export * from "./pairing.js";
 export * from "./chores.js";
 export * from "./instances.js";
 export * from "./reviews.js";
