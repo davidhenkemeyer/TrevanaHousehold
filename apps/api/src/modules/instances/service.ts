@@ -7,14 +7,23 @@ import type {
   ReplanResponse,
   SubmitBody,
   SubmitResponse,
+  WeekLoad,
 } from "@titan/contracts";
-import { type ChoreStatus, type PlainDate, daysBetween, priorityRank } from "@titan/domain";
+import { weeklyCapacitySchema } from "@titan/contracts";
+import {
+  type ChoreStatus,
+  type PlainDate,
+  addDays,
+  daysBetween,
+  priorityRank,
+  summarizeDayLoad,
+} from "@titan/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { badRequest, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
 import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
-import { plainToDbDate } from "../../lib/dates.js";
+import { dbDateToPlain, plainToDbDate } from "../../lib/dates.js";
 import { requireMember, requireParent } from "../access.js";
 import { type DbOrTx, familyToday, replanUntouched } from "./generate.js";
 import { transition } from "./transitions.js";
@@ -264,4 +273,75 @@ export async function replanFamily(
 ): Promise<ReplanResponse> {
   await requireParent(deps.db, familyId, userId);
   return deps.db.$transaction((tx) => replanUntouched(tx, familyId, deps.now()));
+}
+
+/**
+ * The parents' week view: for each day from `from` and each active member,
+ * capacity vs. minutes of chores assigned (the planner's own split, via
+ * summarizeDayLoad), plus FIXED chores nobody can get because their owners left.
+ */
+export async function getWeekLoad(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  query: { from?: string | undefined; days: number },
+): Promise<WeekLoad> {
+  await requireParent(deps.db, familyId, userId);
+  const from =
+    (query.from as PlainDate | undefined) ??
+    (await familyToday(deps.db, familyId, deps.now())).today;
+  const dates = Array.from({ length: query.days }, (_, i) => addDays(from, i));
+  const to = dates.at(-1) ?? from;
+
+  const members = await deps.db.membership.findMany({
+    where: { familyId, active: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, capacity: true },
+  });
+  const rows = await deps.db.choreInstance.findMany({
+    where: {
+      familyId,
+      occurrenceDate: { gte: plainToDbDate(from), lte: plainToDbDate(to) },
+    },
+    select: {
+      occurrenceDate: true,
+      status: true,
+      effortMinutes: true,
+      assignees: { select: { membershipId: true } },
+    },
+  });
+  const fixedChores = await deps.db.chore.findMany({
+    where: { familyId, active: true, assignMode: "FIXED" },
+    select: { id: true, name: true, eligible: { select: { membershipId: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const summary = summarizeDayLoad(
+    members.map((m) => ({ id: m.id, weeklyCapacity: weeklyCapacitySchema.parse(m.capacity) })),
+    rows.map((r) => ({
+      date: dbDateToPlain(r.occurrenceDate),
+      status: r.status,
+      effortMinutes: r.effortMinutes,
+      assigneeIds: r.assignees.map((a) => a.membershipId),
+    })),
+    dates,
+  );
+  const activeIds = new Set(members.map((m) => m.id));
+  return {
+    from,
+    days: dates.map((date) => ({
+      date,
+      members: summary
+        .filter((s) => s.date === date)
+        .map(({ memberId, capacityMinutes, assignedMinutes, overCapacity }) => ({
+          membershipId: memberId,
+          capacityMinutes,
+          assignedMinutes,
+          overCapacity,
+        })),
+    })),
+    choresWithoutOwners: fixedChores
+      .filter((c) => !c.eligible.some((e) => activeIds.has(e.membershipId)))
+      .map(({ id, name }) => ({ id, name })),
+  };
 }

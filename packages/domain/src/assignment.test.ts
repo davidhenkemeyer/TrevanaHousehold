@@ -5,6 +5,7 @@ import {
   type WeeklyCapacity,
   capacityOn,
   planAssignments,
+  summarizeDayLoad,
 } from "./assignment.js";
 import { type PlainDate, addDays, parsePlainDate as d } from "./calendar.js";
 
@@ -260,5 +261,53 @@ describe("determinism and validation", () => {
         occurrences: [],
       }),
     ).toThrow(/invalid tue capacity/);
+  });
+});
+
+describe("summarizeDayLoad", () => {
+  const TUE = addDays(MON, 1);
+  const members: PlanMember[] = [
+    { id: "mom", weeklyCapacity: everyDay(60) },
+    { id: "kid", weeklyCapacity: { ...everyDay(20), tue: 0 } },
+  ];
+
+  it("charges each assignee their share and flags days over capacity", () => {
+    const rows = summarizeDayLoad(
+      members,
+      [
+        { date: MON, status: "NEW", effortMinutes: 15, assigneeIds: ["kid"] },
+        { date: MON, status: "APPROVED", effortMinutes: 15, assigneeIds: ["kid"] },
+        // Shared: 25 minutes split as ceil(25 / 2) = 13 each.
+        { date: MON, status: "IN_PROGRESS", effortMinutes: 25, assigneeIds: ["mom", "kid"] },
+        { date: TUE, status: "NEW", effortMinutes: 5, assigneeIds: ["kid"] },
+      ],
+      [MON, TUE],
+    );
+    expect(rows).toEqual([
+      { date: MON, memberId: "mom", capacityMinutes: 60, assignedMinutes: 13, overCapacity: false },
+      { date: MON, memberId: "kid", capacityMinutes: 20, assignedMinutes: 43, overCapacity: true },
+      { date: TUE, memberId: "mom", capacityMinutes: 60, assignedMinutes: 0, overCapacity: false },
+      // Any work on a day off is over capacity.
+      { date: TUE, memberId: "kid", capacityMinutes: 0, assignedMinutes: 5, overCapacity: true },
+    ]);
+  });
+
+  it("ignores canceled and rejected work and unknown assignees", () => {
+    const rows = summarizeDayLoad(
+      members,
+      [
+        { date: MON, status: "CANCELED", effortMinutes: 30, assigneeIds: ["kid"] },
+        { date: MON, status: "REJECTED", effortMinutes: 30, assigneeIds: ["kid"] },
+        { date: MON, status: "NEW", effortMinutes: 30, assigneeIds: ["gone"] },
+      ],
+      [MON],
+    );
+    expect(rows.map((r) => r.assignedMinutes)).toEqual([0, 0]);
+    expect(rows.every((r) => !r.overCapacity)).toBe(true);
+  });
+
+  it("returns an empty, not-over day when capacity and work are both zero", () => {
+    const [kidTue] = summarizeDayLoad([members[1]!], [], [TUE]);
+    expect(kidTue).toMatchObject({ capacityMinutes: 0, assignedMinutes: 0, overCapacity: false });
   });
 });

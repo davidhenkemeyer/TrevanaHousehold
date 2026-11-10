@@ -4,6 +4,7 @@ import type {
   InstanceList,
   Member,
   SubmitResponse,
+  WeekLoad,
 } from "@titan/contracts";
 import { describe, expect, it } from "vitest";
 import { T0, type Session, minutes, useTestApp } from "../../test/harness.js";
@@ -339,6 +340,104 @@ describe("chore instances", () => {
         { session: mom },
       );
       expect(big.json().error.code).toBe("RANGE_TOO_LARGE");
+    });
+  });
+
+  describe("week load", () => {
+    const weekLoadUrl = (familyId: string, query = "") =>
+      `/v1/families/${familyId}/week-load${query}`;
+    const weekLoad = async (session: Session, familyId: string, query = "") => {
+      const res = await t.request("GET", weekLoadUrl(familyId, query), { session });
+      expect(res.statusCode).toBe(200);
+      return res.json<WeekLoad>();
+    };
+    const cell = (load: WeekLoad, date: string, memberId: string) =>
+      load.days.find((d) => d.date === date)?.members.find((m) => m.membershipId === memberId);
+
+    it("shows capacity vs. assigned minutes per day and flags overloaded days", async () => {
+      const { mom, familyId, momMember, billy, sally } = await setup();
+      // Billy has 20 minutes on school days and 40 on weekends.
+      await choreFor(mom, familyId, billy, { name: "Yard", effortMinutes: 30 });
+
+      const load = await weekLoad(mom, familyId);
+      expect(load.from).toBe("2026-11-10"); // today in Chicago
+      expect(load.days.map((d) => d.date)).toEqual([
+        "2026-11-10",
+        "2026-11-11",
+        "2026-11-12",
+        "2026-11-13",
+        "2026-11-14",
+        "2026-11-15",
+        "2026-11-16",
+      ]);
+      // Members in family order.
+      expect(load.days[0]?.members.map((m) => m.membershipId)).toEqual([
+        momMember.id,
+        billy.id,
+        sally.id,
+      ]);
+      expect(cell(load, "2026-11-10", billy.id)).toEqual({
+        membershipId: billy.id,
+        capacityMinutes: 20,
+        assignedMinutes: 30,
+        overCapacity: true,
+      });
+      expect(cell(load, "2026-11-14", billy.id)).toMatchObject({
+        capacityMinutes: 40,
+        assignedMinutes: 30,
+        overCapacity: false,
+      });
+      expect(cell(load, "2026-11-10", momMember.id)).toMatchObject({
+        assignedMinutes: 0,
+        overCapacity: false,
+      });
+      expect(load.choresWithoutOwners).toEqual([]);
+    });
+
+    it("stops counting canceled work", async () => {
+      const { mom, familyId, billy } = await setup();
+      const today = await choreFor(mom, familyId, billy, { effortMinutes: 30 });
+      expect((await act(mom, familyId, today.id, "cancel")).statusCode).toBe(200);
+      const load = await weekLoad(mom, familyId);
+      expect(cell(load, "2026-11-10", billy.id)).toMatchObject({
+        assignedMinutes: 0,
+        overCapacity: false,
+      });
+      expect(cell(load, "2026-11-11", billy.id)).toMatchObject({ assignedMinutes: 30 });
+    });
+
+    it("accepts a start date and length", async () => {
+      const { mom, familyId } = await setup();
+      const load = await weekLoad(mom, familyId, "?from=2026-11-20&days=2");
+      expect(load.days.map((d) => d.date)).toEqual(["2026-11-20", "2026-11-21"]);
+      const tooLong = await t.request("GET", weekLoadUrl(familyId, "?days=15"), { session: mom });
+      expect(tooLong.statusCode).toBe(400);
+    });
+
+    it("lists fixed chores whose owners have all left", async () => {
+      const { mom, familyId, sally } = await setup();
+      const chore = await t.createChore(mom, familyId, {
+        name: "Feed the fish",
+        assignMode: "FIXED",
+        eligibleMembershipIds: [sally.id],
+      });
+      const removed = await t.request("DELETE", `/v1/families/${familyId}/members/${sally.id}`, {
+        session: mom,
+      });
+      expect(removed.statusCode).toBe(204);
+      const load = await weekLoad(mom, familyId);
+      expect(load.choresWithoutOwners).toEqual([{ id: chore.id, name: "Feed the fish" }]);
+      expect(load.days[0]?.members.some((m) => m.membershipId === sally.id)).toBe(false);
+    });
+
+    it("is for parents only", async () => {
+      const { familyId, billySession } = await setup();
+      const kid = await t.request("GET", weekLoadUrl(familyId), { session: billySession });
+      expect(kid.statusCode).toBe(403);
+      expect(kid.json()).toMatchObject({ error: { code: "PARENT_REQUIRED" } });
+      const stranger = await t.signup({ displayName: "Stranger" });
+      const outsider = await t.request("GET", weekLoadUrl(familyId), { session: stranger });
+      expect(outsider.statusCode).toBe(404);
     });
   });
 });

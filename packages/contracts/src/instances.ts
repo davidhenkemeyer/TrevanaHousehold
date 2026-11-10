@@ -139,3 +139,33 @@ export type SubmitResponse = z.infer<typeof submitResponseSchema>;
 
 export const replanResponseSchema = z.object({ created: z.int(), removed: z.int() });
 export type ReplanResponse = z.infer<typeof replanResponseSchema>;
+
+export const WEEK_LOAD_MAX_DAYS = 14;
+
+export const weekLoadQuerySchema = z.object({
+  /** First day. Default: today in the family's time zone. */
+  from: plainDateSchema.optional(),
+  days: z.coerce.number().int().min(1).max(WEEK_LOAD_MAX_DAYS).default(7),
+});
+
+/** Capacity vs. assigned chore minutes per day and member (the parents' week view). */
+export const weekLoadSchema = z.object({
+  from: plainDateSchema,
+  days: z.array(
+    z.object({
+      date: plainDateSchema,
+      /** One entry per active member, in family order. */
+      members: z.array(
+        z.object({
+          membershipId: idSchema,
+          capacityMinutes: z.int(),
+          assignedMinutes: z.int(),
+          overCapacity: z.boolean(),
+        }),
+      ),
+    }),
+  ),
+  /** Active "always the same people" chores whose owners have all left: nobody gets them. */
+  choresWithoutOwners: z.array(z.object({ id: idSchema, name: z.string() })),
+});
+export type WeekLoad = z.infer<typeof weekLoadSchema>;

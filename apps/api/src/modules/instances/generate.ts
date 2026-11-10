@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { recurrenceSchema, toRecurrenceRule, weeklyCapacitySchema } from "@titan/contracts";
 import {
   type PlainDate,
+  type LoadedInstance,
   type PlanMember,
   type RecurrenceRule,
   type ScheduleChore,
@@ -18,7 +19,7 @@ import {
   computeInstanceWindow,
   expandOccurrences,
   instantToPlainDate,
-  minutesPerAssignee,
+  loadByDay,
   occurrenceKey,
   planAssignments,
   planningWindow,
@@ -152,19 +153,21 @@ export async function planFamily(db: DbOrTx, familyId: string, now: Date): Promi
     weeklyCapacity: weeklyCapacitySchema.parse(m.capacity),
   }));
 
-  // What's already planned: never plan a date twice; count its minutes as load.
+  // What's already planned: never plan a date twice; count its minutes as load
+  // (the same rule the week view uses, via loadByDay).
   const existingKeys = new Set<string>();
-  const existingLoad: Record<string, Record<string, number>> = {};
+  const loaded: LoadedInstance[] = [];
   for (const inst of windowInstances) {
     const date = dbDateToPlain(inst.occurrenceDate);
     existingKeys.add(occurrenceKey(inst.choreId, date));
-    if (inst.status === "CANCELED" || inst.status === "REJECTED") continue;
-    const minutes = minutesPerAssignee(inst.effortMinutes, inst.assignees.length);
-    for (const { membershipId } of inst.assignees) {
-      const day = (existingLoad[date] ??= {});
-      day[membershipId] = (day[membershipId] ?? 0) + minutes;
-    }
+    loaded.push({
+      date,
+      status: inst.status,
+      effortMinutes: inst.effortMinutes,
+      assigneeIds: inst.assignees.map((a) => a.membershipId),
+    });
   }
+  const existingLoad = loadByDay(loaded);
 
   // Who had each chore last (rows are in date order, so later rows overwrite earlier).
   const lastRotationAssignee: Record<string, string> = {};

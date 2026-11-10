@@ -8,6 +8,7 @@
 export * from "./calendar.js";
 export * from "./timezone.js";
 export * from "./recurrence.js";
+export * from "./describe.js";
 export * from "./instanceWindow.js";
 export * from "./status.js";
 export * from "./stateMachine.js";

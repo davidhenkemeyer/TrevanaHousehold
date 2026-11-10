@@ -11,6 +11,8 @@ import {
   replanResponseSchema,
   submitBodySchema,
   submitResponseSchema,
+  weekLoadQuerySchema,
+  weekLoadSchema,
 } from "@titan/contracts";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Deps } from "../../deps.js";
@@ -44,6 +46,19 @@ export const instanceRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app,
     },
     async (request) =>
       instances.listInstances(deps, request.userId, request.params.familyId, request.query),
+  );
+
+  app.get(
+    "/families/:familyId/week-load",
+    {
+      schema: {
+        params: familyParamsSchema,
+        querystring: weekLoadQuerySchema,
+        response: { 200: weekLoadSchema },
+      },
+    },
+    async (request) =>
+      instances.getWeekLoad(deps, request.userId, request.params.familyId, request.query),
   );
 
   app.get(

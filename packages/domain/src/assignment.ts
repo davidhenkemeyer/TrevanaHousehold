@@ -25,7 +25,7 @@
 import type { PlainDate } from "./calendar.js";
 import { weekdayOf } from "./calendar.js";
 import { minutesPerAssignee } from "./schedule.js";
-import type { Priority } from "./status.js";
+import type { ChoreStatus, Priority } from "./status.js";
 import { priorityRank } from "./status.js";
 
 export const ASSIGN_MODES = ["FIXED", "ROTATE", "AUTO"] as const;
@@ -274,4 +274,64 @@ function validateInput(input: PlanInput): void {
       throw new RangeError(`Occurrence "${occ.key}" has invalid effort: ${occ.effortMinutes}`);
     }
   }
+}
+
+/** Statuses whose minutes don't count against anyone's day (withdrawn or declined work). */
+export const LOAD_EXCLUDED_STATUSES: ReadonlySet<ChoreStatus> = new Set(["CANCELED", "REJECTED"]);
+
+/** The parts of a planned occurrence that count toward a member's day. */
+export interface LoadedInstance {
+  date: PlainDate;
+  status: ChoreStatus;
+  effortMinutes: number;
+  assigneeIds: readonly string[];
+}
+
+/**
+ * Minutes charged per date, per member: each assignee is charged
+ * `minutesPerAssignee(effort, assignees)`, the same split the planner uses.
+ * CANCELED and REJECTED occurrences are not counted.
+ */
+export function loadByDay(
+  instances: Iterable<LoadedInstance>,
+): Record<string, Record<string, number>> {
+  const load: Record<string, Record<string, number>> = {};
+  for (const inst of instances) {
+    if (LOAD_EXCLUDED_STATUSES.has(inst.status)) continue;
+    const minutes = minutesPerAssignee(inst.effortMinutes, inst.assigneeIds.length);
+    const day = (load[inst.date] ??= {});
+    for (const id of inst.assigneeIds) day[id] = (day[id] ?? 0) + minutes;
+  }
+  return load;
+}
+
+export interface DayLoadSummary extends DayLoad {
+  /** Assigned more minutes than the member has that day. */
+  overCapacity: boolean;
+}
+
+/**
+ * Capacity vs. assigned minutes for each of `dates` × `members`, in the given
+ * order (for the parents' week view). Assignees who aren't in `members` (e.g.
+ * removed from the family) are ignored.
+ */
+export function summarizeDayLoad(
+  members: readonly PlanMember[],
+  instances: Iterable<LoadedInstance>,
+  dates: readonly PlainDate[],
+): DayLoadSummary[] {
+  const load = loadByDay(instances);
+  return dates.flatMap((date) =>
+    members.map((m) => {
+      const capacityMinutes = capacityOn(m.weeklyCapacity, date);
+      const assignedMinutes = load[date]?.[m.id] ?? 0;
+      return {
+        date,
+        memberId: m.id,
+        capacityMinutes,
+        assignedMinutes,
+        overCapacity: assignedMinutes > capacityMinutes,
+      };
+    }),
+  );
 }

@@ -33,6 +33,48 @@ describe("rate limiting", () => {
   });
 });
 
+describe("CORS (web app)", () => {
+  const WEB_ORIGIN = "http://localhost:8081";
+  const config = loadConfig({
+    DATABASE_URL: testDatabaseUrl(),
+    JWT_SECRET: "test-secret-that-is-at-least-32-characters-long",
+    LOG_LEVEL: "silent",
+    CORS_ORIGINS: WEB_ORIGIN,
+  });
+  const preflight = async (origin: string, method: string) => {
+    const db = createDb(config.databaseUrl);
+    const app = await buildApp({ config, db });
+    try {
+      return await app.inject({
+        method: "OPTIONS",
+        url: "/v1/families/x/members/y",
+        headers: {
+          origin,
+          "access-control-request-method": method,
+          "access-control-request-headers": "authorization,content-type",
+        },
+      });
+    } finally {
+      await app.close();
+      await db.$disconnect();
+    }
+  };
+
+  // @fastify/cors allows only GET/HEAD/POST unless told otherwise; the app uses PATCH and DELETE.
+  it.each(["GET", "POST", "PATCH", "DELETE"])("allows %s from the web app", async (method) => {
+    const res = await preflight(WEB_ORIGIN, method);
+    expect(res.statusCode).toBe(204);
+    expect(res.headers["access-control-allow-origin"]).toBe(WEB_ORIGIN);
+    const allowed = String(res.headers["access-control-allow-methods"]).split(/,\s*/);
+    expect(allowed).toContain(method);
+  });
+
+  it("doesn't allow other origins", async () => {
+    const res = await preflight("https://evil.example", "GET");
+    expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+});
+
 describe("app basics", () => {
   const t = useTestApp();
 

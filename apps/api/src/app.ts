@@ -51,7 +51,12 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   app.decorateRequest("userId", "");
   registerErrorHandling(app);
 
-  await app.register(cors, { origin: config.corsOrigins });
+  // List methods explicitly: @fastify/cors allows only GET, HEAD, and POST by
+  // default, which would block the web app's PATCH and DELETE requests.
+  await app.register(cors, {
+    origin: config.corsOrigins,
+    methods: ["GET", "HEAD", "POST", "PATCH", "DELETE"],
+  });
   if (config.rateLimitEnabled) {
     // global: false → only routes that set `config.rateLimit` are limited.
     // When the plugin isn't registered, those per-route settings are simply ignored.
