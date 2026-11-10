@@ -257,7 +257,7 @@ Adapted rather than copied:
    - Prisma schema and migrations, plus seed data (the Billy/Sally example family).
    - Sign-up, login, rotating refresh tokens.
    - Families, kid profiles with PINs, member capacity, email invites.
-   - **Kid sign-in (as built):** there is no public family join code. A parent signs in on a device once, then hands it to a kid with "switch to Billy" (no PIN needed for a parent). On a shared tablet, a kid switching to a sibling must enter that sibling's PIN, if one is set. Five wrong PINs lock the profile for 15 minutes. A 6-digit family code that anyone could enter would let strangers guess their way into a family, which is why the design doc's family PIN became per-kid PINs behind a parent sign-in.
+   - **Kid sign-in (as built):** there is no public family join code. A parent signs in on a device once, then hands it to a kid with "switch to Billy" (no PIN needed for a parent). On a shared tablet, a kid switching to a sibling must enter that sibling's PIN, if one is set. Five wrong PINs lock the profile for 15 minutes. A 6-digit family code that anyone could enter would let strangers guess their way into a family, which is why the design doc's family PIN became per-kid PINs behind a parent sign-in. (Step 5 extended this: parents can set a quick-switch PIN too, and kids' own phones are set up with one-time pairing codes. See Step 5.)
    - Families always keep at least one parent. Only members with an email login can be parents.
 3. ✅ **Chores, submissions, and reviews API**
    - CRUD for chores: checklist items, eligible members, review policy, reward amount, recurrence (now including one-time `ONCE` chores).
@@ -269,12 +269,16 @@ Adapted rather than copied:
    - Planning runs **hourly** for every family (idempotent, so it covers each family's local midnight without per-time-zone schedules), one transaction per family so one failure never blocks the rest.
    - Late marking runs every 5 minutes: flags overdue outstanding chores once, records a system event, and calls the notification hook (filled in by Step 10).
    - Jobs run inside the API by default (`RUN_JOBS=true`) or in a separate worker process; pg-boss's singleton queues keep runs from overlapping across processes. `job:plan` and `job:mark-late` run them by hand.
-5. **App shell + Today view**
-   - Titan design tokens package (colors, type, spacing, component styles) and the app theme built on it. App name "Titan Household" and store bundle IDs.
-   - Expo app with auth screens, family onboarding, and "who's using this device?".
-   - Today view: chores grouped by status, with start, defer, and complete (with the checklist), situational cues on cards, and a completion celebration.
-   - Chore detail screen with submission and feedback history.
-   - Runs on web, iOS simulator, and Android emulator from day one.
+5. ✅ **App shell + Today view** (`apps/mobile`, Expo SDK 58)
+   - `@titan/tokens` design tokens and the app theme built on them. App name "Titan Household"; bundle ID placeholder `com.titansuite.household` (replace before Step 11). Icons exported from `assets/brand` to PNG.
+   - Sign in, sign up, family onboarding, "Who's using this?", Family tab (add kids, PINs, kid phone setup, invite a parent), Me tab (quick-switch PIN, shared-device setting, sign out).
+   - Today view: Needs attention / To do / Waiting for review / Done, a Mine/Family toggle, the day's progress ring, cue text on cards, one-tap completion (a checklist sheet when the chore has steps), confetti and a haptic tap. Buttons come from the API's `availableActions`.
+   - Chore detail screen with steps, attempts, feedback, and history.
+   - Small API additions: optional `cue` text on chores.
+   - Verified with unit tests and a Playwright web smoke test (sign up → family → kid → hand over → complete with a partial checklist). Native devices still need a hands-on check via Expo Go.
+   - **How kids use the app (as built):**
+     - **Kid with their own phone:** a parent taps "Set up their phone" on the kid's profile and gets a one-time code (`XXXX-XXXX`, single use, 10 minutes, rate-limited). The kid enters it on their phone, which stays signed in as them. The parent's password never touches the kid's phone.
+     - **Shared device** (a parent's phone or a family iPad): "Who's using this?" hands the device to a kid. Switching back to a parent uses that parent's quick-switch PIN, checked by the server with the same lockout as kids' PINs; a parent without a PIN signs in with their password. The device never keeps a parent's session while a kid uses it. With "Shared family device" turned on, the app opens on the picker and returns to it after 2 idle minutes.
 6. **Parent tools**
    - Chore editor: recurrence picker, deadline, effort, checklist, review policy, reward, assignment mode.
    - Member capacity editor.

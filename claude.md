@@ -41,6 +41,8 @@
 - Services throw `AppError` (see `apps/api/src/errors.ts`) with a stable `code`; every error response is `{ error: { code, message, details? } }`.
 - Family-scoped routes authorize via `requireMember` / `requireParent` (`modules/access.ts`). Non-members get 404, not 403.
 - Database rows become API responses only through `modules/dto.ts` (accounts/families) and `modules/instances/views.ts` (chores), so hashes can't leak and shapes stay consistent.
+- **The app never decides permissions.** Buttons come from each instance's `availableActions`, PIN prompts are hints, and the API enforces everything. Shared-device rules: a parent switches to a kid freely; switching to a parent always needs that parent's PIN; kids' own phones are set up with one-time pairing codes.
+- App screens use the components in `apps/mobile/src/components` and colors/type from `@titan/tokens` (via `src/theme.ts`); no hard-coded hex values in screens.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
 - Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
@@ -48,7 +50,15 @@
 ## Layout
 
 ```
-apps/mobile         Expo app (planned, Step 5)
+apps/mobile         Expo app (iOS / Android / web), Expo Router
+  app/              routes: (auth) sign-in, sign-up, pair; (app) onboarding, who, chore/[id],
+                    (tabs) Today, Family, Me
+  src/api/          typed HTTP client + one function per endpoint
+  src/auth/         session manager (single-flight refresh), token storage
+  src/components/   Titan UI building blocks (ui.tsx, brand.tsx, PinPad, Celebration)
+  src/features/     screen logic (today/sections.ts is unit-tested)
+  e2e/              Playwright web smoke test (uses installed Edge)
+packages/tokens     Titan design tokens and per-app themes
 apps/api            Fastify API + background jobs
   prisma/           schema.prisma, migrations/, seed.ts
   src/modules/      auth, families (members, kid profile switching), invites,
@@ -74,6 +84,10 @@ docs/               plan, Titan suite notes
 - `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
 - `pnpm --filter @titan/api job:plan` / `job:mark-late`: run a background job once, now
 - `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
+- `pnpm --filter @titan/mobile start`: Expo dev server (scan the QR code with Expo Go; the phone finds the API on this computer's LAN address). `web` opens it in a browser.
+- `pnpm --filter @titan/mobile export:web` then `pnpm --filter @titan/mobile exec expo serve --port 8081`: static web build
+- `pnpm --filter @titan/mobile e2e`: Playwright smoke test (needs the built API on :3000 and the web app on :8081; rebuild the API first, a stale `dist` fails in confusing ways)
+- `pnpm --filter @titan/mobile icons`: re-export icon PNGs after editing `assets/brand`
 - Single package: `pnpm --filter @titan/domain test`
 
 API tests need Postgres running. They use a separate `chores_test` database that the test setup creates and migrates automatically, and they wipe it between tests. Use the `useTestApp()` harness; it provides a controllable clock (`t.advance(ms)`). Remember that advancing past 15 minutes expires access tokens, so call `t.refresh(session)` afterwards.

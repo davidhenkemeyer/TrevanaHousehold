@@ -7,6 +7,9 @@ coverage/
 # Generated code (recreated by `prisma generate`, which the api scripts run)
 **/src/generated/
 
+# Playwright output (screenshots, traces)
+**/e2e/output/
+
 # Expo / React Native
 .expo/
 web-build/
