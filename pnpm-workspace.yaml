@@ -1,3 +1,15 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Dependencies allowed to run install scripts (pnpm blocks all others).
+#   prisma, @prisma/engines: download the schema/migration engine
+#   esbuild (via tsx):       installs its native binary
+allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+
+# Fail the install (instead of silently adding exclusions) when a dependency
+# version is newer than pnpm's minimum release age. Pin an older version instead.
+minimumReleaseAgeStrict: true

@@ -1,0 +1,111 @@
+// Database schema. Change it, then run `pnpm --filter @chores/api db:migrate --name <change>`
+// to create a migration. Chore tables arrive in Step 3 as their own migration.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PARENT
+  CHILD
+}
+
+/// A person. Parents and older kids sign in with email + password; kid profiles
+/// created by a parent have neither and are reached by switching profiles on a
+/// family device (see Membership.pinHash).
+model User {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  /// Stored trimmed and lowercased. Null for kid profiles.
+  email        String?  @unique
+  passwordHash String?
+  displayName  String
+  avatarColor  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+  invitesSent   Invite[]       @relation("InviteCreatedBy")
+}
+
+model Family {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  /// IANA zone, e.g. "America/Chicago". All scheduling happens in this zone.
+  timeZone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  invites     Invite[]
+}
+
+/// A user's place in a family: their role, capacity, and points there.
+model Membership {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  familyId          String    @db.Uuid
+  userId            String    @db.Uuid
+  role              Role
+  /// Minutes of chore time per weekday: { sun, mon, ..., sat }.
+  capacity          Json
+  pointsBalance     Int       @default(0)
+  /// Kid profiles only: PIN asked when a sibling switches to this profile.
+  pinHash           String?
+  pinFailedAttempts Int       @default(0)
+  pinLockedUntil    DateTime?
+  /// Removed members are deactivated, not deleted, so their history survives.
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@index([userId])
+}
+
+/// An invitation for someone with an email address to join a family.
+model Invite {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  familyId         String    @db.Uuid
+  email            String
+  role             Role
+  /// SHA-256 of the secret token; the token itself is never stored.
+  tokenHash        String    @unique
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  acceptedByUserId String?   @db.Uuid
+  revokedAt        DateTime?
+  createdByUserId  String    @db.Uuid
+  createdAt        DateTime  @default(now())
+
+  family    Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("InviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+}
+
+/// One session's long-lived refresh token. Tokens rotate on every use; presenting
+/// an already-used token revokes all of that user's sessions (likely theft).
+model RefreshToken {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  userId       String    @db.Uuid
+  /// SHA-256 of the token; the token itself is never stored.
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @db.Uuid
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

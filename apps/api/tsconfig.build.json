@@ -1,0 +1,13 @@
+{
+  // Build config: emits dist/ from src/, excluding tests.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/test/**"]
+}

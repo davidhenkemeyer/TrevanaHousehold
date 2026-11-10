@@ -4,3 +4,5 @@ coverage
 .turbo
 .expo
 pnpm-lock.yaml
+**/src/generated
+**/prisma/migrations

@@ -1,0 +1,25 @@
+{
+  "name": "@chores/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zod request/response schemas shared by the API and its clients (app, Alexa).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@chores/domain": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

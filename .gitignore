@@ -4,6 +4,9 @@ dist/
 coverage/
 .turbo/
 
+# Generated code (recreated by `prisma generate`, which the api scripts run)
+**/src/generated/
+
 # Expo / React Native
 .expo/
 web-build/

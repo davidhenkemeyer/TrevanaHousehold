@@ -1,0 +1,10 @@
+{
+  // Editor/typecheck config: sources, tests, Prisma seed and config.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src", "prisma", "prisma.config.ts", "vitest.config.ts"]
+}

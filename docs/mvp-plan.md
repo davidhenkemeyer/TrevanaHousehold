@@ -23,7 +23,7 @@ Guiding rule: **all business logic lives on the server and in a shared domain pa
 | Monorepo                  | pnpm workspaces + Turborepo                                                                                                                     | Shared types and tooling across the app and the server                     |
 | App (iOS / Android / Web) | Expo SDK (React Native + Expo Router + react-native-web), TypeScript                                                                            | One codebase for all three platforms. EAS builds the store binaries.       |
 | UI data layer             | TanStack Query + typed API client                                                                                                               | Caching, offline-friendly retries                                          |
-| API                       | Node 22 + Fastify + Zod, REST contract via `ts-rest`                                                                                            | Typed client for the app. OpenAPI output for Alexa and other clients.      |
+| API                       | Node + Fastify + Zod via `fastify-type-provider-zod`; request/response schemas shared in `packages/contracts`                                   | Typed client for the app. OpenAPI output for Alexa and other clients.      |
 | DB / ORM                  | PostgreSQL 16 + Prisma (migrations)                                                                                                             | Strong enums, JSON, and timezone support                                   |
 | Background jobs           | pg-boss (job queue that runs inside Postgres)                                                                                                   | No Redis needed. Handles scheduled and retryable jobs.                     |
 | Auth                      | Email + password (argon2) with JWT access/refresh tokens for parents and teens. A kid profile can sign in on a shared device with a member PIN. | Simple now. Can grow into OAuth2 later, which Alexa account linking needs. |
@@ -61,7 +61,7 @@ FamilyChoresApp/
 │        └─ server.ts
 └─ packages/
    ├─ domain/                   # PURE TS, no I/O: recurrence, state machine, scheduler, points
-   └─ contracts/                # Zod schemas + ts-rest API contract (shared by api & mobile)
+   └─ contracts/                # Zod request/response schemas (shared by api & mobile)
 ```
 
 Shared lint, format, and TS settings live at the repo root (`eslint.config.js`, `.prettierrc.json`, `tsconfig.base.json`) rather than in a separate config package.
@@ -71,13 +71,15 @@ Shared lint, format, and TS settings live at the repo root (`eslint.config.js`, 
 ## Data models (Prisma sketch)
 
 ```
-Family        id, name, timezone, joinCode(unique, 6 digits), createdAt
+Family        id, name, timeZone, createdAt
 User          id, email?(unique), passwordHash?, displayName, avatarColor, createdAt
-              # kids may have no email: they are created by a parent and use PIN login
-Membership    id, familyId, userId, role(PARENT|CHILD), pinHash?,
-              capacity Json  # minutes per weekday, e.g. {mon:30,...,sun:60}
+              # kids may have no email: they are created by a parent (see "Kid sign-in")
+Membership    id, familyId, userId, role(PARENT|CHILD), pinHash?, pinFailedAttempts,
+              pinLockedUntil?, capacity Json  # minutes per weekday, e.g. {mon:30,...,sun:60}
               pointsBalance Int, active Bool         @@unique(familyId,userId)
-Invite        id, familyId, email, role, tokenHash, expiresAt, acceptedAt?
+Invite        id, familyId, email, role, tokenHash, expiresAt, acceptedAt?, revokedAt?
+RefreshToken  id, userId, tokenHash, expiresAt, revokedAt?, replacedById?
+              # single-use, rotated on every refresh; replaying a used one revokes all sessions
 
 Chore         id, familyId, name, description, completionCriteria,
 (template)    effortMinutes, rewardPoints, defaultPriority(LOW|NORMAL|HIGH),
@@ -155,8 +157,10 @@ Implemented in `packages/domain/src/stateMachine.ts` and `lateness.ts`.
 2. **DB + auth + families** (`apps/api`)
    - Prisma schema and migrations, plus seed data (the Billy/Sally example family).
    - Parent sign-up and login, refresh tokens.
-   - Create a family, invite members by email, join by code, kid profiles with PIN.
+   - Create a family, invite members by email, kid profiles with PIN.
    - Edit member capacity.
+   - **Kid sign-in (as built):** there is no public family join code. A parent signs in on a device once, then hands it to a kid with "switch to Billy" (no PIN needed for a parent). On a shared tablet, a kid switching to a sibling must enter that sibling's PIN, if one is set. Five wrong PINs lock the profile for 15 minutes. A 6-digit family code that anyone could enter would let strangers guess their way into a family, which is why the design doc's family PIN became per-kid PINs behind a parent sign-in.
+   - Families always keep at least one parent. Only members with an email login can be parents.
 3. **Chores API**
    - CRUD for chores and their eligible members.
    - Instance list: today's, by member, and the review queue.

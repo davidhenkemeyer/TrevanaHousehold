@@ -8,6 +8,27 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    # API integration tests need a real Postgres.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: chores
+          POSTGRES_PASSWORD: chores
+          POSTGRES_DB: chores
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chores -d chores"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      # The API test setup creates and migrates this database itself.
+      TEST_DATABASE_URL: postgresql://chores:chores@localhost:5432/chores_test
+
     steps:
       - uses: actions/checkout@v4
 
