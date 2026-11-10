@@ -1,12 +1,16 @@
 /**
- * @chores/domain — pure business rules shared by the API, jobs, and (read-only) the app.
+ * @chores/domain: pure business rules shared by the API, background jobs,
+ * the app (read-only helpers such as availableActions), and later Alexa.
  *
- * Step 1 of the roadmap fills this package with:
- *   - recurrence expansion (daily/weekly/monthly/quarterly/annual)
- *   - the chore instance state machine
- *   - capacity-based auto-assignment
- *
- * Nothing in here may do I/O (no DB, network, clock reads): callers pass in
- * "now" and data explicitly, which keeps every rule deterministic and testable.
+ * Nothing in here may do I/O (no DB, network, or clock reads). Callers pass
+ * "now" and all data in explicitly, which keeps every rule deterministic and testable.
  */
+export * from "./calendar.js";
+export * from "./timezone.js";
+export * from "./recurrence.js";
+export * from "./instanceWindow.js";
 export * from "./status.js";
+export * from "./stateMachine.js";
+export * from "./lateness.js";
+export * from "./points.js";
+export * from "./assignment.js";

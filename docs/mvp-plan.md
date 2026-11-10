@@ -63,6 +63,7 @@ FamilyChoresApp/
    ├─ domain/                   # PURE TS, no I/O: recurrence, state machine, scheduler, points
    └─ contracts/                # Zod schemas + ts-rest API contract (shared by api & mobile)
 ```
+
 Shared lint, format, and TS settings live at the repo root (`eslint.config.js`, `.prettierrc.json`, `tsconfig.base.json`) rather than in a separate config package.
 
 `apps/alexa/` comes after the MVP.
@@ -82,7 +83,8 @@ Chore         id, familyId, name, description, completionCriteria,
 (template)    effortMinutes, rewardPoints, defaultPriority(LOW|NORMAL|HIGH),
               requiresPhoto Bool, active Bool,
               recurrence Json   # {freq:DAILY|WEEKLY|MONTHLY|QUARTERLY|ANNUAL,
-                                #  interval, byWeekday?, byMonthDay?, startDate, endDate?}
+                                #  interval, byWeekday?, byMonthDay?, startDate, endDate?,
+                                #  timeOfDay?}  — see packages/domain/src/recurrence.ts
               deadlineMinutes Int  # "due N after assignment", e.g. 1 week
               assignMode(FIXED|ROTATE|AUTO), createdById
 ChoreEligible choreId, membershipId   # FIXED: these owners, ROTATE/AUTO: the candidate pool
@@ -109,22 +111,34 @@ Statuses: `NEW, IN_PROGRESS, DEFERRED, COMPLETED, VERIFIED, NOT_APPROVED, CANCEL
 
 "Late" is a **flag** (`isLate`) plus a forced HIGH priority, not separate statuses. The old doc's `Late-Not Started` and `Late-WIP` are the same as `NEW+late` and `IN_PROGRESS+late`. Using a flag avoids doubling the number of states.
 
-- NEW → IN_PROGRESS | DEFERRED | CANCELED
+- NEW → IN_PROGRESS | DEFERRED | COMPLETED | CANCELED (completing straight from NEW allows a one-tap "done", including by voice)
 - DEFERRED → NEW | IN_PROGRESS | CANCELED
 - IN_PROGRESS → COMPLETED | NEW | CANCELED
 - COMPLETED → VERIFIED | NOT_APPROVED (parent only)
 - NOT_APPROVED → IN_PROGRESS | COMPLETED (priority is set to HIGH)
-- A parent who completes their own chore goes straight to VERIFIED.
-- A chore with `requiresPhoto` cannot reach COMPLETED without a photo.
-- Only a parent can cancel.
-- Reaching VERIFIED writes a PointsLedger entry. Points are split across assignees.
+- A parent who completes any chore (their own or a child's) sends it straight to VERIFIED, per the design doc ("if a parent says a chore is complete, no verification is needed").
+- A chore with `requiresPhoto` cannot reach COMPLETED without a photo. This applies to children only; a parent's completion needs no proof.
+- Only a parent can cancel, and they can cancel from any non-terminal status (including COMPLETED and NOT_APPROVED).
+- Children can only act on chores assigned to them; parents can act on any chore.
+- Reaching VERIFIED writes a PointsLedger entry. Points are split across assignees as whole numbers; any remainder goes to the first assignees by id.
+- Only outstanding chores (NEW, IN_PROGRESS, DEFERRED, NOT_APPROVED) can become late. A COMPLETED chore awaiting review is never marked late.
+
+Implemented in `packages/domain/src/stateMachine.ts` and `lateness.ts`.
+
+### Recurrence rules (implemented in `packages/domain/src/recurrence.ts`)
+
+- Weekly intervals ("every 2 weeks") count Monday–Sunday weeks from the week containing the start date.
+- Monthly, quarterly, and annual chores **clamp** to the month's end: "the 31st" falls on Feb 28/29, Apr 30, and so on, and an annual Feb 29 chore falls on Feb 28 in non-leap years. `byMonthDay: -1` means the last day of the month.
+- Each chore has a local `timeOfDay` when it becomes available (default 00:00). Whole days of a deadline are added on the local calendar, so "due in 1 week" keeps the same local time across DST changes.
+- DST: a local time that doesn't exist (spring forward) moves ahead by the gap; a time that happens twice (fall back) uses the earlier one.
 
 ### Scheduling algorithm (in `packages/domain`)
 
 1. A nightly job runs for each family, in that family's timezone. It expands every active chore's recurrence over a rolling 7-day window and creates the instances that don't exist yet. A unique key prevents duplicates.
 2. Assignment depends on the chore's mode:
-   - **FIXED**: assign to the chore's listed owners.
+   - **FIXED**: assign to the chore's listed owners. Each owner's day is charged their share of the effort (rounded up).
    - **ROTATE**: assign to the next person in the candidate pool, in turn.
+   - For ROTATE and AUTO, an empty pool means "any family member". Within a day, FIXED chores are planned first, then ROTATE, then AUTO, so flexible chores fill in around fixed ones.
    - **AUTO**: for each day, sort that day's chores by priority, then by effort (largest first). Give each chore to the eligible member with the highest _remaining capacity ratio_ (remaining minutes ÷ that day's capacity). On a tie, pick whoever did this chore least recently. If nobody has room, assign to the member with the most room anyway and mark the day "over capacity" so parents can see it.
 3. A job every 15 minutes finds instances with `dueAt < now` that aren't in a terminal state. It sets `isLate`, raises priority to HIGH, and queues the "late" notification.
 
