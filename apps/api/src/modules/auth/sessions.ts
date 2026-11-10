@@ -6,7 +6,7 @@
  * a copy, so every session of that user is revoked (refresh-token reuse
  * detection, per OAuth 2.0 security best practice).
  */
-import type { Tokens } from "@chores/contracts";
+import type { Tokens } from "@titan/contracts";
 import type { Deps } from "../../deps.js";
 import { unauthorized } from "../../errors.js";
 import { randomToken, sha256 } from "../../lib/secrets.js";

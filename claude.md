@@ -1,8 +1,8 @@
-# Chores App - Project Scope & Guidelines
+# Titan Household - Project Scope & Guidelines
 
 ## Overview
 
-A task and household chore tracking application designed to manage recurring tasks, assignments, and completion history.
+**Titan Household** ("Building Habits, Together.") is a family chore and habit app: recurring tasks, assignments, review, and completion history. It's the first app of the **Titan suite** (with Titan Agile and Titan Focus), which will share a common core, the Titan Engine. See [docs/titan-suite.md](docs/titan-suite.md). Packages use the `@titan/*` npm scope.
 
 ## Core Requirements for Claude
 
@@ -19,6 +19,8 @@ A task and household chore tracking application designed to manage recurring tas
   - It predates the current stack (it assumed Python/FastAPI/MySQL). Its chore state machine, notification list, and family/PIN model still apply; see the plan for deliberate changes (e.g. "late" is a flag, not a status; the family PIN became per-kid PINs).
 - Parent Verification & API Specification: https://docs.google.com/document/d/1aVgNC2rhS3Ta8D6B6T9meMqAREGB4k2EIgxjSCcQ6Ys/edit
   - Defines the approval queue, submissions, rework vs. reject, checklists, reference photos, and photo mark-up. The plan's "How the verification spec was adopted" section lists what was taken as-is and what was adapted (identity comes from the token, never the body; camelCase, family-scoped routes).
+- Titan Branding Suite (brand, design tokens, icons, behavioral design principles): https://docs.google.com/document/d/1845bT79N69Hj7VzUnIxRvsugfV8-VF1yaMyqRngnZEQ/edit
+  - Its principles are product rules, not just style: routine chores earn XP while extra jobs earn coins (by default), never deduct earned progress as punishment, no sibling leaderboards, daily-digest notifications by default. See the plan's "Titan branding and behavioral principles".
 - Rewards are customizable per family: real money, points, or none, plus optional gamification (XP, levels, badges) that works with any of them. See the plan's "Rewards & gamification".
 
 ## Tech stack (decided)
@@ -64,10 +66,10 @@ docs/               plan and design notes
 - `pnpm lint` / `pnpm typecheck` / `pnpm test` / `pnpm build`: run across all packages via Turborepo
 - `pnpm format` (writes) / `pnpm format:check` (CI)
 - `pnpm db:up` / `pnpm db:down`: start/stop Postgres + MinIO (needs Docker Desktop running)
-- `pnpm --filter @chores/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
-- `pnpm --filter @chores/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`
-- `pnpm --filter @chores/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
-- Single package: `pnpm --filter @chores/domain test`
+- `pnpm --filter @titan/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
+- `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`
+- `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
+- Single package: `pnpm --filter @titan/domain test`
 
 API tests need Postgres running. They use a separate `chores_test` database that the test setup creates and migrates automatically, and they wipe it between tests. Use the `useTestApp()` harness; it provides a controllable clock (`t.advance(ms)`). Remember that advancing past 15 minutes expires access tokens, so call `t.refresh(session)` afterwards.
 

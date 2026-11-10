@@ -1,4 +1,4 @@
-// Database schema. Change it, then run `pnpm --filter @chores/api db:migrate --name <change>`
+// Database schema. Change it, then run `pnpm --filter @titan/api db:migrate --name <change>`
 // to create a migration. Chore tables arrive in Step 3 as their own migration.
 
 generator client {

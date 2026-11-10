@@ -1,5 +1,5 @@
 /**
- * Database rows → API response shapes (see @chores/contracts). Keeping this in
+ * Database rows → API response shapes (see @titan/contracts). Keeping this in
  * one place ensures secrets such as password and PIN hashes are never
  * serialized by accident: only the fields listed here leave the server.
  */
@@ -9,7 +9,7 @@ import {
   type Member as MemberDto,
   type User as UserDto,
   weeklyCapacitySchema,
-} from "@chores/contracts";
+} from "@titan/contracts";
 import type { Family, Invite, Membership, User } from "../generated/prisma/client.js";
 
 export function toUserDto(user: User): UserDto {

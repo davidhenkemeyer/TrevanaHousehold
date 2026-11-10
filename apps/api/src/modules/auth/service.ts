@@ -6,8 +6,8 @@ import type {
   Tokens,
   UpdateMeBody,
   User as UserDto,
-} from "@chores/contracts";
-import { defaultAvatarColor } from "@chores/domain";
+} from "@titan/contracts";
+import { defaultAvatarColor } from "@titan/domain";
 import type { Deps } from "../../deps.js";
 import { conflict, isUniqueViolation, notFound, unauthorized } from "../../errors.js";
 import { hashSecret, verifyAgainstDummy, verifySecret } from "../../lib/secrets.js";

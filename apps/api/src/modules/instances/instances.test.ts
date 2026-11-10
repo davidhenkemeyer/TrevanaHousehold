@@ -4,7 +4,7 @@ import type {
   InstanceList,
   Member,
   SubmitResponse,
-} from "@chores/contracts";
+} from "@titan/contracts";
 import { describe, expect, it } from "vitest";
 import { T0, type Session, minutes, useTestApp } from "../../test/harness.js";
 import { planFamily } from "./generate.js";

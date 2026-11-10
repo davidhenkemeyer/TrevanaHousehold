@@ -8,7 +8,7 @@ import type {
   ChoreList,
   CreateChoreBody,
   UpdateChoreBody,
-} from "@chores/contracts";
+} from "@titan/contracts";
 import type { Deps } from "../../deps.js";
 import { badRequest, notFound } from "../../errors.js";
 import type { Prisma } from "../../generated/prisma/client.js";

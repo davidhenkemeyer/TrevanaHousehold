@@ -1,5 +1,5 @@
 /**
- * @chores/domain: pure business rules shared by the API, background jobs,
+ * @titan/domain: pure business rules shared by the API, background jobs,
  * the app (read-only helpers such as availableActions), and later Alexa.
  *
  * Nothing in here may do I/O (no DB, network, or clock reads). Callers pass

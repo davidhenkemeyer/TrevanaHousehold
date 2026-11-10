@@ -5,7 +5,7 @@ import {
   REVIEW_POLICIES,
   type RecurrenceRule,
   validateRecurrenceRule,
-} from "@chores/domain";
+} from "@titan/domain";
 import { z } from "zod";
 import { idSchema, isoDateTimeSchema } from "./common.js";
 

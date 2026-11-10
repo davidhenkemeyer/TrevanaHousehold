@@ -12,7 +12,7 @@ import type {
   FamilyDetail,
   Member,
   Tokens,
-} from "@chores/contracts";
+} from "@titan/contracts";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";

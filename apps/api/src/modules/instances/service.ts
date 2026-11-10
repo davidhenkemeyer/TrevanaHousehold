@@ -7,8 +7,8 @@ import type {
   ReplanResponse,
   SubmitBody,
   SubmitResponse,
-} from "@chores/contracts";
-import { type ChoreStatus, type PlainDate, daysBetween, priorityRank } from "@chores/domain";
+} from "@titan/contracts";
+import { type ChoreStatus, type PlainDate, daysBetween, priorityRank } from "@titan/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { badRequest, notFound } from "../../errors.js";

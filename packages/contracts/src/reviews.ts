@@ -1,4 +1,4 @@
-import { REVIEW_DECISIONS, REVIEW_POLICIES } from "@chores/domain";
+import { REVIEW_DECISIONS, REVIEW_POLICIES } from "@titan/domain";
 import { z } from "zod";
 import { idSchema } from "./common.js";
 import { instanceSchema, plainDateSchema, reviewSchema, submissionSchema } from "./instances.js";

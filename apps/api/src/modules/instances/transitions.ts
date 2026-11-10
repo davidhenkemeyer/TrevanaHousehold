@@ -19,7 +19,7 @@ import {
   type TransitionErrorCode,
   type TransitionResult,
   applyAction,
-} from "@chores/domain";
+} from "@titan/domain";
 import { AppError, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
 import { onApproved } from "../rewards/hooks.js";

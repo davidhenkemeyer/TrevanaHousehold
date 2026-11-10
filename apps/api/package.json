@@ -1,5 +1,5 @@
 {
-  "name": "@chores/api",
+  "name": "@titan/api",
   "version": "0.0.0",
   "private": true,
   "description": "Fastify REST API and background jobs for the chores app.",
@@ -17,8 +17,8 @@
     "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts"
   },
   "dependencies": {
-    "@chores/contracts": "workspace:*",
-    "@chores/domain": "workspace:*",
+    "@titan/contracts": "workspace:*",
+    "@titan/domain": "workspace:*",
     "@fastify/cors": "11.4.0",
     "@fastify/rate-limit": "11.2.2",
     "@node-rs/argon2": "2.2.2",

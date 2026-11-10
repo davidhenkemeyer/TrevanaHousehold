@@ -8,8 +8,8 @@ import type {
   Person,
   Review as ReviewDto,
   Submission as SubmissionDto,
-} from "@chores/contracts";
-import { type Role, availableActions, effectivePriority } from "@chores/domain";
+} from "@titan/contracts";
+import { type Role, availableActions, effectivePriority } from "@titan/domain";
 import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { dbDateToPlain } from "../../lib/dates.js";

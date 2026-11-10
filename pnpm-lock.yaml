@@ -196,12 +196,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@chores/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@chores/domain':
-        specifier: workspace:*
-        version: link:../../packages/domain
       '@fastify/cors':
         specifier: 11.4.0
         version: 11.4.0
@@ -217,6 +211,12 @@ importers:
       '@prisma/client':
         specifier: 7.10.1
         version: 7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
+      '@titan/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@titan/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       fastify:
         specifier: 5.12.8
         version: 5.12.8
@@ -242,7 +242,7 @@ importers:
 
   packages/contracts:
     dependencies:
-      '@chores/domain':
+      '@titan/domain':
         specifier: workspace:*
         version: link:../domain
       zod:

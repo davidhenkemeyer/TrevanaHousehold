@@ -4,7 +4,7 @@
  * Input schemas normalize as they validate (e.g. emails are trimmed and
  * lowercased), so the API and every client agree on one canonical form.
  */
-import { ROLES, isValidTimeZone } from "@chores/domain";
+import { ROLES, isValidTimeZone } from "@titan/domain";
 import { z } from "zod";
 
 export const idSchema = z.uuid();

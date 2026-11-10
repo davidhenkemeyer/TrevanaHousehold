@@ -1,8 +1,8 @@
-# Family Chores App: MVP Plan
+# Titan Household: MVP Plan
 
 ## Context
 
-A family chore app that:
+**Titan Household** ("Building Habits, Together.") is the family app in the Titan suite (with Titan Agile and Titan Focus; see [docs/titan-suite.md](titan-suite.md)). It's a family chore app that:
 
 - runs on iOS, Android, and the web (PC);
 - assigns recurring chores (daily, weekly, monthly, quarterly, annual) automatically, based on each member's capacity;
@@ -17,7 +17,8 @@ Inputs:
 
 - The original design doc (state machine, notification list, family/PIN model, REST resources).
 - The "Parent Verification & API Specification" doc (approval queue, submissions, rework vs. reject, checklists, golden-standard photos, photo mark-up, pending rewards). See [How the verification spec was adopted](#how-the-verification-spec-was-adopted).
-- Decisions made along the way: TypeScript backend, PostgreSQL, photo proof + rewards + push in the MVP, customizable rewards.
+- The Titan Branding Suite doc (brand, design tokens, icon specs, and behavioral design principles). See [Titan branding and behavioral principles](#titan-branding-and-behavioral-principles).
+- Decisions made along the way: TypeScript backend, PostgreSQL, photo proof + rewards + push in the MVP, customizable rewards with a routine/extra-job default.
 
 Guiding rule: **all business logic lives on the server and in a shared domain package, never in the UI.** That way an Alexa skill becomes just another API client later.
 
@@ -187,11 +188,37 @@ Two independent settings per family:
    - Levels follow a gentle curve defined in `packages/domain`.
    - Badges are pure rule functions over a member's history, in `packages/domain` (e.g. first chore, 7-day streak, a week with nothing late, 10 approvals in a row without rework, 100 chores). New badges are code changes, not data.
 
+**Routine chores vs. extra jobs** (from the branding doc's dual-currency principle; flexible by family decision):
+
+- Every chore is either a **Routine** (baseline duty, e.g. "after dinner, clear the table") or an **Extra Job** (optional, e.g. "wash the car").
+- By default, routines earn **XP only**, and extra jobs earn **coins**: the family's currency, money or points. This avoids paying kids for baseline duties, which research shows erodes their own motivation.
+- Parents can still attach a coin reward to a routine chore. It's a deliberate override, not the default.
+- Extra jobs can be posted to an open **Job Board**, where kids claim them themselves (an `OPEN` assignment mode with a `claim` action). Built in Step 8 with coins.
+
 Rules:
 
+- **Never take earned progress away as punishment**: no deducting coins or XP, no wiping streaks. Corrections of genuine mistakes are allowed, labeled as corrections. Missed days don't break streaks outright ("streak preservers").
+- **No sibling leaderboards.** Progress is personal, plus a **shared family goal** bar (combined XP toward a non-material event like "Pizza & Movie Night").
 - **Pending rewards**: while a submission waits for review, its reward shows as _pending_ (computed from PENDING_REVIEW instances, not written to the ledger). Approval writes the ledger entry. Rejection simply leaves nothing pending, so there's nothing to undo.
 - Shared chores split money and points as whole units (cents or points); any remainder goes to the first assignees by id. XP is not split: each assignee earns the full XP.
 - **Changing currency** never converts or erases anything. Every ledger entry records its currency, and old balances stay visible so a parent can settle them. XP and badges don't depend on the currency.
+
+### Titan branding and behavioral principles
+
+Source: the Titan Branding Suite doc (`claude.md` links it).
+
+- **Brand**: Titan Household, tagline "Building Habits, Together." Accent colors Warm Amber `#D97706`, Soft Emerald `#059669`, Playful Sky Blue `#0284C7`, on the shared Slate neutrals (`#0F172A`, `#334155`, `#F1F5F9`, `#FFFFFF`).
+- **Type**: Inter for UI, Roboto Mono for chips, checklist indicators, and data. Scale: 36/24/20/16/12 px.
+- **Components**: buttons with 8 px radius (primary, secondary, ghost); cards with 12 px radius, 16 px padding, a soft shadow and a 1 px `#E2E8F0` border; pill-shaped badges in monospace; focus rings in the accent color.
+- **App icon**: the geometric "T" mark with a progress ring, on a 135° Amber → Emerald gradient, in a squircle with a 64 px safe zone on a 512 px canvas. Final icon files are needed before Step 11.
+- **Design tokens** live in a shared package, so Titan Agile and Titan Focus can reuse the structure with their own accent palettes.
+- **Behavioral principles adopted**:
+  - Chores can carry an optional **situational cue** ("WHEN dinner finishes") shown on the card, in addition to the scheduled time.
+  - Short checklists (3–5 steps): the editor suggests one for chores that have none.
+  - One-tap or swipe completion, with an immediate celebration (confetti, haptics, sound).
+  - Notifications default to a **daily digest**, not instant alerts.
+  - Batch, asynchronous review so parents never become the bottleneck (already built in Step 3).
+  - The rewards rules above (routine vs. extra job, never deducting progress, no leaderboards, a shared family goal).
 
 ### How the verification spec was adopted
 
@@ -240,8 +267,9 @@ Adapted rather than copied:
    - **As built:** planning (turning chores into dated, assigned occurrences for the next 7 days) lives in Step 3, so a new chore appears immediately. Edits re-plan only untouched future occurrences (still NEW, never acted on); archiving removes those and keeps history. Capacity changes and member removal also re-plan.
 4. **Jobs**: pg-boss setup, the nightly planning run (reusing Step 3's planner), and the late-marking job, with integration tests against a real Postgres.
 5. **App shell + Today view**
+   - Titan design tokens package (colors, type, spacing, component styles) and the app theme built on it. App name "Titan Household" and store bundle IDs.
    - Expo app with auth screens, family onboarding, and "who's using this device?".
-   - Today view: chores grouped by status, with start, defer, and complete (with the checklist).
+   - Today view: chores grouped by status, with start, defer, and complete (with the checklist), situational cues on cards, and a completion celebration.
    - Chore detail screen with submission and feedback history.
    - Runs on web, iOS simulator, and Android emulator from day one.
 6. **Parent tools**
@@ -255,16 +283,20 @@ Adapted rather than copied:
    - Tap-to-pin mark-up on submitted photos.
    - Enforce the `requiresPhoto` rule.
 8. **Rewards**
-   - Family reward settings (money / points / none).
-   - Ledger, balances, and pending amounts.
+   - Family reward settings (money / points / none). Chore kind (Routine / Extra Job) with the XP-for-routines, coins-for-extra-jobs default.
+   - Ledger, balances, and pending amounts. No punitive deductions.
    - Money: payouts. Points: catalog and redemption requests with parent approval.
+   - Job Board: `OPEN` extra jobs that kids claim.
 9. **Gamification**
    - On/off setting, XP on approval, levels.
-   - Badge rules in `packages/domain`, awarded after each approval; badges and level shown on the rewards tab.
+   - Badge rules in `packages/domain` (including mastery badges for chores done without rework), awarded after each approval; streaks with preservers.
+   - Shared family goal progress bar.
+   - Badges, level, and the family goal shown on the rewards tab. No leaderboards.
 10. **Push notifications**
-    - Register device tokens; per-user mute settings.
+    - Register device tokens; per-user settings, defaulting to a daily digest.
     - Types: new chore assigned, chore late, submitted for review, approved, needs rework, rejected, canceled, reward request decided, badge earned.
 11. **Deploy + beta**
+    - Final app icons from the Titan icon set; trademark check on the "Titan" names before store listings.
     - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage.
     - Deploy the web build as a static site.
     - Ship test builds through EAS: TestFlight for iOS, Play internal testing for Android.

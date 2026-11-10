@@ -16,8 +16,8 @@ import type {
   Member,
   UpdateFamilyBody,
   UpdateMemberBody,
-} from "@chores/contracts";
-import { defaultAvatarColor, defaultWeeklyCapacity } from "@chores/domain";
+} from "@titan/contracts";
+import { defaultAvatarColor, defaultWeeklyCapacity } from "@titan/domain";
 import type { Deps } from "../../deps.js";
 import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from "../../errors.js";
 import type { Prisma } from "../../generated/prisma/client.js";

@@ -8,7 +8,7 @@
  * (from Step 4) by the nightly job.
  */
 import { randomUUID } from "node:crypto";
-import { recurrenceSchema, toRecurrenceRule, weeklyCapacitySchema } from "@chores/contracts";
+import { recurrenceSchema, toRecurrenceRule, weeklyCapacitySchema } from "@titan/contracts";
 import {
   type PlainDate,
   type PlanMember,
@@ -22,7 +22,7 @@ import {
   occurrenceKey,
   planAssignments,
   planningWindow,
-} from "@chores/domain";
+} from "@titan/domain";
 import type { Db } from "../../db.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { dbDateToPlain, plainToDbDate } from "../../lib/dates.js";

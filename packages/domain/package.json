@@ -1,5 +1,5 @@
 {
-  "name": "@chores/domain",
+  "name": "@titan/domain",
   "version": "0.0.0",
   "private": true,
   "description": "Pure business rules: recurrence, chore state machine, capacity-based scheduling, points. No I/O.",

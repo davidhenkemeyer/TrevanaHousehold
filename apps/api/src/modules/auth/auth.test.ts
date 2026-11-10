@@ -1,4 +1,4 @@
-import type { MeResponse, Tokens } from "@chores/contracts";
+import type { MeResponse, Tokens } from "@titan/contracts";
 import { describe, expect, it } from "vitest";
 import { PASSWORD, days, minutes, useTestApp } from "../../test/harness.js";
 

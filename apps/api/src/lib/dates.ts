@@ -3,7 +3,7 @@
  * midnight. These convert between them and the domain's PlainDate strings
  * without any time zone shifting.
  */
-import { type PlainDate, parsePlainDate } from "@chores/domain";
+import { type PlainDate, parsePlainDate } from "@titan/domain";
 
 export function dbDateToPlain(value: Date): PlainDate {
   return parsePlainDate(value.toISOString().slice(0, 10));
