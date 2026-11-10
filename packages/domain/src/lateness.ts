@@ -24,14 +24,14 @@ export function shouldMarkLate(instance: LatenessInput, now: Date): boolean {
 }
 
 /**
- * The priority to show and sort by. Late or rejected (NOT_APPROVED) chores are
- * always HIGH, whatever their stored priority, per the design doc.
+ * The priority to show and sort by. Late chores and chores sent back for
+ * rework are always HIGH, whatever their stored priority, per the design doc.
  */
 export function effectivePriority(
   storedPriority: Priority,
   status: ChoreStatus,
   isLate: boolean,
 ): Priority {
-  if (isLate || status === "NOT_APPROVED") return "HIGH";
+  if (isLate || status === "NEEDS_REWORK") return "HIGH";
   return storedPriority;
 }

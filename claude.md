@@ -17,6 +17,9 @@ A task and household chore tracking application designed to manage recurring tas
 - Targets: iOS and Android apps, plus a web app usable from a PC. Later: Alexa and other home voice assistants.
 - Design doc (written a few years ago): https://docs.google.com/document/d/1NUgHOPljbSg3imJQP0QCEWl8fTwJYWRAwgRPFyA8NKY/edit?tab=t.0#heading=h.1dhklcnv7cfk
   - It predates the current stack (it assumed Python/FastAPI/MySQL). Its chore state machine, notification list, and family/PIN model still apply; see the plan for deliberate changes (e.g. "late" is a flag, not a status; the family PIN became per-kid PINs).
+- Parent Verification & API Specification: https://docs.google.com/document/d/1aVgNC2rhS3Ta8D6B6T9meMqAREGB4k2EIgxjSCcQ6Ys/edit
+  - Defines the approval queue, submissions, rework vs. reject, checklists, reference photos, and photo mark-up. The plan's "How the verification spec was adopted" section lists what was taken as-is and what was adapted (identity comes from the token, never the body; camelCase, family-scoped routes).
+- Rewards are customizable per family: real money, points, or none, plus optional gamification (XP, levels, badges) that works with any of them. See the plan's "Rewards & gamification".
 
 ## Tech stack (decided)
 

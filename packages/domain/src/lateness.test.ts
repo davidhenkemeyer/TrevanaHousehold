@@ -6,16 +6,19 @@ const dueAt = new Date("2026-11-10T17:00:00Z");
 const after = new Date("2026-11-10T17:00:01Z");
 
 describe("shouldMarkLate", () => {
-  it.each<ChoreStatus>(["NEW", "IN_PROGRESS", "DEFERRED", "NOT_APPROVED"])(
+  it.each<ChoreStatus>(["NEW", "IN_PROGRESS", "DEFERRED", "NEEDS_REWORK"])(
     "marks an overdue %s chore late",
     (status) => {
       expect(shouldMarkLate({ status, isLate: false, dueAt }, after)).toBe(true);
     },
   );
 
-  it.each<ChoreStatus>(["COMPLETED", "VERIFIED", "CANCELED"])("never marks %s late", (status) => {
-    expect(shouldMarkLate({ status, isLate: false, dueAt }, after)).toBe(false);
-  });
+  it.each<ChoreStatus>(["PENDING_REVIEW", "APPROVED", "REJECTED", "CANCELED"])(
+    "never marks %s late",
+    (status) => {
+      expect(shouldMarkLate({ status, isLate: false, dueAt }, after)).toBe(false);
+    },
+  );
 
   it("is not late exactly at the deadline", () => {
     expect(shouldMarkLate({ status: "NEW", isLate: false, dueAt }, dueAt)).toBe(false);
@@ -31,8 +34,8 @@ describe("effectivePriority", () => {
     expect(effectivePriority("LOW", "NEW", false)).toBe("LOW");
   });
 
-  it("forces HIGH when late or not approved", () => {
+  it("forces HIGH when late or sent back for rework", () => {
     expect(effectivePriority("LOW", "IN_PROGRESS", true)).toBe("HIGH");
-    expect(effectivePriority("NORMAL", "NOT_APPROVED", false)).toBe("HIGH");
+    expect(effectivePriority("NORMAL", "NEEDS_REWORK", false)).toBe("HIGH");
   });
 });
