@@ -2,12 +2,15 @@
  * Chore detail: what to do (cue, description, checklist), the latest
  * feedback, and the full history of attempts and status changes.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ReviewBody } from "@titan/contracts";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { GradientHeader } from "../../../src/components/brand";
 import { Screen, errorMessage } from "../../../src/components/Screen";
-import { AppText, Card, Chip, ErrorText } from "../../../src/components/ui";
+import { AppText, Button, Card, Chip, ErrorText } from "../../../src/components/ui";
+import { DecisionSheet } from "../../../src/features/review/DecisionSheet";
 import { dueLabel } from "../../../src/features/today/sections";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
@@ -42,13 +45,28 @@ export default function ChoreDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const api = useApi();
   const router = useRouter();
-  const { familyId } = useFamily();
+  const queryClient = useQueryClient();
+  const { familyId, role } = useFamily();
+  const [needsWork, setNeedsWork] = useState(false);
   const detail = useQuery({
     queryKey: ["instance", familyId, id],
     queryFn: () => api.instance(familyId!, id),
     enabled: familyId !== undefined && typeof id === "string",
   });
   const d = detail.data;
+  // Review buttons only when the API says this viewer may approve; the decision
+  // applies to the latest attempt.
+  const pending = d?.availableActions.includes("approve") ? d.submissions.at(-1) : undefined;
+
+  const review = useMutation({
+    mutationFn: (body: ReviewBody) => api.review(familyId!, pending!.id, body),
+    onSuccess: () => setNeedsWork(false),
+    onSettled: () => {
+      for (const key of ["instance", "reviewQueue", "agenda", "weekLoad"]) {
+        void queryClient.invalidateQueries({ queryKey: [key, familyId] });
+      }
+    },
+  });
 
   return (
     <Screen
@@ -71,7 +89,30 @@ export default function ChoreDetail() {
         </GradientHeader>
       }
     >
-      <ErrorText message={errorMessage(detail.error)} />
+      <ErrorText message={errorMessage(detail.error ?? (needsWork ? null : review.error))} />
+      {d && pending && (
+        <Card style={{ gap: spacing.md, borderColor: colors.primary }}>
+          <AppText variant="bodyStrong">{`${pending.submittedBy.displayName} says it's done`}</AppText>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Button
+              title="Approve"
+              style={{ flex: 1 }}
+              loading={review.isPending && !needsWork}
+              onPress={() => review.mutate({ action: "APPROVE" })}
+            />
+            <Button
+              title="Needs work"
+              variant="secondary"
+              style={{ flex: 1 }}
+              disabled={review.isPending}
+              onPress={() => {
+                review.reset();
+                setNeedsWork(true);
+              }}
+            />
+          </View>
+        </Card>
+      )}
       {d && (
         <>
           <Card style={{ gap: spacing.md }}>
@@ -129,6 +170,16 @@ export default function ChoreDetail() {
             </View>
           )}
 
+          {role === "PARENT" && (
+            <Button
+              title="Edit chore"
+              variant="secondary"
+              onPress={() =>
+                router.push({ pathname: "/chore-edit/[id]", params: { id: d.choreId } })
+              }
+            />
+          )}
+
           {d.events.length > 0 && (
             <View style={{ gap: spacing.sm }}>
               <AppText variant="bodyStrong" color={colors.textMuted}>
@@ -143,6 +194,21 @@ export default function ChoreDetail() {
           )}
         </>
       )}
+      <DecisionSheet
+        target={
+          needsWork && d && pending
+            ? {
+                key: pending.id,
+                childName: pending.submittedBy.displayName,
+                choreName: d.choreName,
+              }
+            : null
+        }
+        submitting={review.isPending}
+        error={needsWork ? errorMessage(review.error) : null}
+        onSubmit={(body) => review.mutate(body)}
+        onClose={() => setNeedsWork(false)}
+      />
     </Screen>
   );
 }

@@ -19,6 +19,8 @@ import {
   ErrorText,
   TextField,
 } from "../../../src/components/ui";
+import { CapacitySheet } from "../../../src/features/family/CapacitySheet";
+import { formatMinutes, weeklyTotal } from "../../../src/features/week/week";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
 
@@ -33,6 +35,7 @@ export default function Family() {
   const [kidName, setKidName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [pinFor, setPinFor] = useState<Member | null>(null);
+  const [capacityFor, setCapacityFor] = useState<Member | null>(null);
   const [pairing, setPairing] = useState<{ name: string; code: string; expiresAt: string } | null>(
     null,
   );
@@ -50,6 +53,18 @@ export default function Family() {
     onSuccess: () => {
       setPinFor(null);
       void refresh();
+    },
+  });
+  const setCapacity = useMutation({
+    mutationFn: ({ member, capacity }: { member: Member; capacity: Member["capacity"] }) =>
+      api.updateMember(familyId!, member.id, { capacity }),
+    onSuccess: () => {
+      setCapacityFor(null);
+      void refresh();
+      // New capacity re-plans untouched chores, so Today and the week view change too.
+      for (const key of ["agenda", "weekLoad"]) {
+        void queryClient.invalidateQueries({ queryKey: [key, familyId] });
+      }
     },
   });
   const pairPhone = useMutation({
@@ -76,12 +91,25 @@ export default function Family() {
               <AppText variant="bodyStrong">
                 {m.id === membershipId ? `${m.displayName} (you)` : m.displayName}
               </AppText>
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
                 <Chip label={m.role === "PARENT" ? "PARENT" : "KID"} />
                 {m.hasPin && <Chip label="PIN SET" color={colors.success} />}
+                <Chip label={`${formatMinutes(weeklyTotal(m.capacity))}/WEEK`} />
               </View>
             </View>
           </View>
+          {isParent && (
+            <Button
+              title="Daily time"
+              variant="ghost"
+              accessibilityLabel={`Daily time for ${m.displayName}`}
+              onPress={() => {
+                setCapacity.reset();
+                setCapacityFor(m);
+              }}
+              style={{ alignSelf: "flex-start" }}
+            />
+          )}
           {isParent && m.role === "CHILD" && (
             <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
               <Button
@@ -155,6 +183,14 @@ export default function Family() {
           </Card>
         </>
       )}
+
+      <CapacitySheet
+        member={capacityFor}
+        saving={setCapacity.isPending}
+        error={errorMessage(setCapacity.error)}
+        onSave={(capacity) => capacityFor && setCapacity.mutate({ member: capacityFor, capacity })}
+        onClose={() => setCapacityFor(null)}
+      />
 
       <Modal
         visible={pinFor !== null}

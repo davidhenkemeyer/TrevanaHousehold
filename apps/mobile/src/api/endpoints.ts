@@ -5,7 +5,9 @@
 import type {
   AgendaResponse,
   AuthResponse,
+  BatchApproveResponse,
   Chore,
+  ChoreList,
   CreateChildBody,
   CreateChoreBody,
   CreateFamilyBody,
@@ -15,15 +17,21 @@ import type {
   Instance,
   InstanceActionBody,
   InstanceDetail,
+  InstanceList,
   LoginBody,
   Member,
   MeResponse,
   PairingCodeResponse,
+  ReviewBody,
+  ReviewQueue,
+  ReviewResponse,
   SignupBody,
   SubmitBody,
   SubmitResponse,
   Tokens,
+  UpdateChoreBody,
   UpdateMemberBody,
+  WeekLoad,
 } from "@titan/contracts";
 import type { HttpClient } from "./http";
 
@@ -73,6 +81,18 @@ export function createApi(http: HttpClient) {
     // Chores
     createChore: (familyId: string, body: Partial<CreateChoreBody>) =>
       http.request<Chore>("POST", `${f(familyId)}/chores`, body),
+    chores: (familyId: string, includeArchived = false) =>
+      http.request<ChoreList>(
+        "GET",
+        `${f(familyId)}/chores${query({ includeArchived: includeArchived ? "true" : undefined })}`,
+      ),
+    chore: (familyId: string, choreId: string) =>
+      http.request<Chore>("GET", `${f(familyId)}/chores/${choreId}`),
+    updateChore: (familyId: string, choreId: string, body: UpdateChoreBody) =>
+      http.request<Chore>("PATCH", `${f(familyId)}/chores/${choreId}`, body),
+    /** Archives the chore: untouched future occurrences go away, history stays. */
+    archiveChore: (familyId: string, choreId: string) =>
+      http.request<void>("DELETE", `${f(familyId)}/chores/${choreId}`),
     agenda: (familyId: string, params: { date?: string; memberId?: string } = {}) =>
       http.request<AgendaResponse>("GET", `${f(familyId)}/agenda${query(params)}`),
     instance: (familyId: string, instanceId: string) =>
@@ -82,6 +102,29 @@ export function createApi(http: HttpClient) {
     submit: (familyId: string, instanceId: string, checklist: SubmitBody["checklist"]) =>
       http.request<SubmitResponse>("POST", `${f(familyId)}/instances/${instanceId}/submissions`, {
         checklist,
+      }),
+    instances: (
+      familyId: string,
+      params: { from: string; to: string; memberId?: string; cursor?: string },
+    ) => http.request<InstanceList>("GET", `${f(familyId)}/instances${query(params)}`),
+    weekLoad: (familyId: string, params: { from?: string; days?: number } = {}) =>
+      http.request<WeekLoad>(
+        "GET",
+        `${f(familyId)}/week-load${query({ from: params.from, days: params.days?.toString() })}`,
+      ),
+
+    // Reviews (parents)
+    reviewQueue: (familyId: string, params: { memberId?: string; cursor?: string } = {}) =>
+      http.request<ReviewQueue>("GET", `${f(familyId)}/review-queue${query(params)}`),
+    review: (familyId: string, submissionId: string, body: ReviewBody) =>
+      http.request<ReviewResponse>(
+        "POST",
+        `${f(familyId)}/submissions/${submissionId}/review`,
+        body,
+      ),
+    batchApprove: (familyId: string, submissionIds: string[]) =>
+      http.request<BatchApproveResponse>("POST", `${f(familyId)}/review-queue/approve`, {
+        submissionIds,
       }),
   };
 }

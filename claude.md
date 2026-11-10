@@ -43,6 +43,8 @@
 - Database rows become API responses only through `modules/dto.ts` (accounts/families) and `modules/instances/views.ts` (chores), so hashes can't leak and shapes stay consistent.
 - **The app never decides permissions.** Buttons come from each instance's `availableActions`, PIN prompts are hints, and the API enforces everything. Shared-device rules: a parent switches to a kid freely; switching to a parent always needs that parent's PIN; kids' own phones are set up with one-time pairing codes.
 - App screens use the components in `apps/mobile/src/components` and colors/type from `@titan/tokens` (via `src/theme.ts`); no hard-coded hex values in screens.
+- Every swipe gesture has a visible button that does the same thing (mouse, keyboard, screen readers). On the web, ignore taps that end a drag (see `features/review/ReviewCard.tsx`).
+- The API lists CORS methods explicitly (`app.ts`). A new HTTP method needs adding there, or the web app can't call it.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
 - Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
@@ -52,11 +54,13 @@
 ```
 apps/mobile         Expo app (iOS / Android / web), Expo Router
   app/              routes: (auth) sign-in, sign-up, pair; (app) onboarding, who, chore/[id],
-                    (tabs) Today, Family, Me
+                    chore-edit/[id] ("new" creates); (tabs) Today, Review*, Chores*, Family, Me
+                    (* parents only)
   src/api/          typed HTTP client + one function per endpoint
   src/auth/         session manager (single-flight refresh), token storage
-  src/components/   Titan UI building blocks (ui.tsx, brand.tsx, PinPad, Celebration)
-  src/features/     screen logic (today/sections.ts is unit-tested)
+  src/components/   Titan UI building blocks (ui.tsx, forms.tsx, brand.tsx, PinPad, Celebration)
+  src/features/     screen logic; the pure parts are unit-tested (today/sections, chores/form,
+                    review/queue, week/week)
   e2e/              Playwright web smoke test (uses installed Edge)
 packages/tokens     Titan design tokens and per-app themes
 apps/api            Fastify API + background jobs
@@ -67,7 +71,8 @@ apps/api            Fastify API + background jobs
   src/jobs/         pg-boss scheduling; planning.ts and lateness.ts hold the job logic
   src/worker.ts     optional standalone job worker (no HTTP)
   src/test/         test harness (useTestApp) and DB setup
-packages/domain     recurrence, chore state machine, scheduler, points, defaults
+packages/domain     recurrence (+ describeRecurrence), chore state machine, scheduler and
+                    day load (summarizeDayLoad), points, defaults
 packages/contracts  shared Zod request/response schemas
 assets/brand/       app icons per Titan app (SVG masters; see each folder's README)
 docs/               plan, Titan suite notes
@@ -86,7 +91,7 @@ docs/               plan, Titan suite notes
 - `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
 - `pnpm --filter @titan/mobile start`: Expo dev server (scan the QR code with Expo Go; the phone finds the API on this computer's LAN address). `web` opens it in a browser.
 - `pnpm --filter @titan/mobile export:web` then `pnpm --filter @titan/mobile exec expo serve --port 8081`: static web build
-- `pnpm --filter @titan/mobile e2e`: Playwright smoke test (needs the built API on :3000 and the web app on :8081; rebuild the API first, a stale `dist` fails in confusing ways)
+- `pnpm --filter @titan/mobile e2e`: Playwright smoke tests (family setup + kid; parent tools) (needs the built API on :3000 and the web app on :8081; rebuild the API first, a stale `dist` fails in confusing ways)
 - `pnpm --filter @titan/mobile icons`: re-export icon PNGs after editing `assets/brand`
 - Single package: `pnpm --filter @titan/domain test`
 

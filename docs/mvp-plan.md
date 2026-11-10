@@ -279,11 +279,19 @@ Adapted rather than copied:
    - **How kids use the app (as built):**
      - **Kid with their own phone:** a parent taps "Set up their phone" on the kid's profile and gets a one-time code (`XXXX-XXXX`, single use, 10 minutes, rate-limited). The kid enters it on their phone, which stays signed in as them. The parent's password never touches the kid's phone.
      - **Shared device** (a parent's phone or a family iPad): "Who's using this?" hands the device to a kid. Switching back to a parent uses that parent's quick-switch PIN, checked by the server with the same lockout as kids' PINs; a parent without a PIN signs in with their password. The device never keeps a parent's session while a kid uses it. With "Shared family device" turned on, the app opens on the picker and returns to it after 2 idle minutes.
-6. **Parent tools**
+6. ✅ **Parent tools**
    - Chore editor: recurrence picker, deadline, effort, checklist, review policy, reward, assignment mode.
    - Member capacity editor.
    - Approval queue: cards, swipe gestures, grouping and filters, batch approve.
    - Week view showing where members are over capacity.
+   - **As built:**
+     - Tabs: parents see Today · Review (badge with the waiting count) · Chores · Family · Me; kids see Today · Family · Me. Hiding tabs is a convenience; the API still enforces parent-only routes.
+     - **Chore editor** (`/chore-edit/[id]`, `new` to create), in sections What / When / Due / Who / Steps / Checking it, with a live schedule line from the domain's `describeRecurrence` ("Every 2 weeks on Mon, Thu"). Validation runs the API's own Zod schema; edits send only the changed fields, so saving an untouched chore doesn't re-plan anything. Archive with a confirmation. Dates and times use steppers (no native date-picker dependency).
+     - **Review tab**: cards show the child, chore, time, `1/2 STEPS`, the unchecked steps, late and reward chips. Swipe right approves; swipe left opens "Try again" / "Not accepted" with an optional note. Every swipe has a button twin (Approve / Needs work) for mouse, keyboard, and screen readers. Filter chips per child, "Group by child", "Approve all low-stakes (N)" with a result summary, "Load more" paging. The chore detail screen has the same review buttons, plus "Edit chore". Swipes use React Native's `PanResponder` (no gesture-handler dependency).
+     - **Week view** (Chores tab → Week): a day × member grid of assigned vs. available minutes, over-capacity cells in amber, previous/next week, tap a cell for that day's chores. Backed by `GET /v1/families/:id/week-load?from=&days=` (parents only), computed by the domain's `summarizeDayLoad`, which shares `loadByDay` with the planner so both count minutes the same way (canceled and rejected work doesn't count). It also lists FIXED chores whose owners have all left.
+     - **Daily time** (Family tab → member → "Daily time"): per-weekday steppers in 5-minute steps, presets (Young kid, Kid, Teen, Parent), and a weekly total. Saving re-plans untouched chores.
+     - Fixed along the way: the API's CORS setup allowed only GET/HEAD/POST, so the web app couldn't send PATCH or DELETE (e.g. setting a PIN on the web). Now covered by a test.
+     - Verified by a second Playwright test: create a chore in the editor, see the week go over capacity, fix it with daily time, kid submits partially, parent switches back with a PIN, sends it back with a note, kid redoes it, parent approves with a swipe.
 7. **Photos**
    - Upload via presigned URL, using the camera or the photo library.
    - Reference ("golden standard") photo per chore, shown side by side in review.

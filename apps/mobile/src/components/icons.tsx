@@ -26,6 +26,31 @@ export function FamilyIcon({ color, size = 24 }: IconProps) {
   );
 }
 
+/** A clipboard with a check: the approval queue. */
+export function ReviewIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
+      <Path
+        d="M9 4h6v3H9zM9 5.5H6.5A1.5 1.5 0 005 7v12.5A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5V7a1.5 1.5 0 00-1.5-1.5H15"
+        strokeLinejoin="round"
+      />
+      <Path d="M8.5 14l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** A list with bullets: the family's chores. */
+export function ChoresIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
+      <Path d="M10 6h10M10 12h10M10 18h10" strokeLinecap="round" />
+      <Circle cx={5} cy={6} r={1.5} />
+      <Circle cx={5} cy={12} r={1.5} />
+      <Circle cx={5} cy={18} r={1.5} />
+    </Svg>
+  );
+}
+
 export function MeIcon({ color, size = 24 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2}>
