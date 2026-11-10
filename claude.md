@@ -38,7 +38,10 @@ A task and household chore tracking application designed to manage recurring tas
 - Each API module (`apps/api/src/modules/<name>/`) has `routes.ts` (HTTP + schemas only) → `service.ts` (logic + Prisma queries), with `*.test.ts` alongside. Services take a `Deps` object (`db`, `config`, `accessTokens`, `now`) and never call `new Date()` directly.
 - Services throw `AppError` (see `apps/api/src/errors.ts`) with a stable `code`; every error response is `{ error: { code, message, details? } }`.
 - Family-scoped routes authorize via `requireMember` / `requireParent` (`modules/access.ts`). Non-members get 404, not 403.
-- Database rows become API responses only through `modules/dto.ts`, so hashes can't leak.
+- Database rows become API responses only through `modules/dto.ts` (accounts/families) and `modules/instances/views.ts` (chores), so hashes can't leak and shapes stay consistent.
+- **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
+- Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
+- Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
 
 ## Layout
 
@@ -46,7 +49,9 @@ A task and household chore tracking application designed to manage recurring tas
 apps/mobile         Expo app (planned, Step 5)
 apps/api            Fastify API (+ background jobs in Step 4)
   prisma/           schema.prisma, migrations/, seed.ts
-  src/modules/      auth, families (members, kid profile switching), invites
+  src/modules/      auth, families (members, kid profile switching), invites,
+                    chores, instances (planning, agenda, actions, submissions), reviews,
+                    rewards (hooks only until Step 8)
   src/test/         test harness (useTestApp) and DB setup
 packages/domain     recurrence, chore state machine, scheduler, points, defaults
 packages/contracts  shared Zod request/response schemas

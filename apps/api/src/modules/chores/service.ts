@@ -1,0 +1,220 @@
+/**
+ * Chore definitions. Parents create, edit, and archive; every member can read.
+ * Changes that affect scheduling re-plan the chore's untouched future
+ * occurrences right away, so the Today view reflects them immediately.
+ */
+import type {
+  Chore as ChoreDto,
+  ChoreList,
+  CreateChoreBody,
+  UpdateChoreBody,
+} from "@chores/contracts";
+import type { Deps } from "../../deps.js";
+import { badRequest, notFound } from "../../errors.js";
+import type { Prisma } from "../../generated/prisma/client.js";
+import { requireMember, requireParent } from "../access.js";
+import { familyToday, planFamily, removeUntouchedFuture } from "../instances/generate.js";
+
+type Tx = Prisma.TransactionClient;
+
+const choreInclude = {
+  checklist: { orderBy: { position: "asc" } },
+  eligible: { orderBy: { position: "asc" } },
+} as const satisfies Prisma.ChoreInclude;
+type ChoreRow = Prisma.ChoreGetPayload<{ include: typeof choreInclude }>;
+
+/** Fields whose change alters when, to whom, or for how much a chore is scheduled. */
+const SCHEDULING_FIELDS = [
+  "recurrence",
+  "effortMinutes",
+  "deadlineMinutes",
+  "assignMode",
+  "eligibleMembershipIds",
+  "defaultPriority",
+  "rewardAmount",
+] as const satisfies readonly (keyof UpdateChoreBody)[];
+
+function toChoreDto(chore: ChoreRow): ChoreDto {
+  return {
+    id: chore.id,
+    name: chore.name,
+    description: chore.description,
+    effortMinutes: chore.effortMinutes,
+    defaultPriority: chore.defaultPriority,
+    requiresPhoto: chore.requiresPhoto,
+    reviewPolicy: chore.reviewPolicy,
+    rewardAmount: chore.rewardAmount,
+    recurrence: chore.recurrence as ChoreDto["recurrence"],
+    deadlineMinutes: chore.deadlineMinutes,
+    assignMode: chore.assignMode,
+    eligibleMembershipIds: chore.eligible.map((e) => e.membershipId),
+    checklist: chore.checklist.map((i) => ({ id: i.id, text: i.text })),
+    active: chore.active,
+    createdAt: chore.createdAt.toISOString(),
+    updatedAt: chore.updatedAt.toISOString(),
+  };
+}
+
+async function assertActiveMembers(
+  tx: Tx,
+  familyId: string,
+  ids: readonly string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const found = await tx.membership.count({
+    where: { familyId, active: true, id: { in: [...ids] } },
+  });
+  if (found !== ids.length) {
+    throw badRequest(
+      "UNKNOWN_MEMBER",
+      "Every assigned member must be an active member of this family.",
+    );
+  }
+}
+
+async function findChore(
+  tx: Tx | Deps["db"],
+  familyId: string,
+  choreId: string,
+): Promise<ChoreRow> {
+  const chore = await tx.chore.findFirst({
+    where: { id: choreId, familyId },
+    include: choreInclude,
+  });
+  if (!chore) throw notFound("CHORE_NOT_FOUND", "Chore not found.");
+  return chore;
+}
+
+export async function createChore(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  body: CreateChoreBody,
+): Promise<ChoreDto> {
+  const parent = await requireParent(deps.db, familyId, userId);
+  return deps.db.$transaction(async (tx) => {
+    await assertActiveMembers(tx, familyId, body.eligibleMembershipIds);
+    const chore = await tx.chore.create({
+      data: {
+        familyId,
+        createdById: parent.id,
+        name: body.name,
+        description: body.description,
+        effortMinutes: body.effortMinutes,
+        defaultPriority: body.defaultPriority,
+        requiresPhoto: body.requiresPhoto,
+        reviewPolicy: body.reviewPolicy,
+        rewardAmount: body.rewardAmount,
+        recurrence: body.recurrence,
+        deadlineMinutes: body.deadlineMinutes,
+        assignMode: body.assignMode,
+        checklist: { create: body.checklist.map((text, position) => ({ text, position })) },
+        eligible: {
+          create: body.eligibleMembershipIds.map((membershipId, position) => ({
+            membershipId,
+            position,
+          })),
+        },
+      },
+      include: choreInclude,
+    });
+    await planFamily(tx, familyId, deps.now());
+    return toChoreDto(chore);
+  });
+}
+
+export async function listChores(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  includeArchived: boolean,
+): Promise<ChoreList> {
+  await requireMember(deps.db, familyId, userId);
+  const chores = await deps.db.chore.findMany({
+    where: { familyId, ...(includeArchived ? {} : { active: true }) },
+    include: choreInclude,
+    orderBy: [{ active: "desc" }, { name: "asc" }],
+  });
+  return { chores: chores.map(toChoreDto) };
+}
+
+export async function getChore(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  choreId: string,
+): Promise<ChoreDto> {
+  await requireMember(deps.db, familyId, userId);
+  return toChoreDto(await findChore(deps.db, familyId, choreId));
+}
+
+export async function updateChore(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  choreId: string,
+  body: UpdateChoreBody,
+): Promise<ChoreDto> {
+  await requireParent(deps.db, familyId, userId);
+  return deps.db.$transaction(async (tx) => {
+    const existing = await findChore(tx, familyId, choreId);
+    const assignMode = body.assignMode ?? existing.assignMode;
+    const eligible = body.eligibleMembershipIds ?? existing.eligible.map((e) => e.membershipId);
+    if (assignMode === "FIXED" && eligible.length === 0) {
+      throw badRequest("FIXED_NEEDS_OWNER", "A FIXED chore needs at least one owner.");
+    }
+    if (body.eligibleMembershipIds) await assertActiveMembers(tx, familyId, eligible);
+
+    await tx.chore.update({
+      where: { id: choreId },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(body.effortMinutes !== undefined && { effortMinutes: body.effortMinutes }),
+        ...(body.defaultPriority !== undefined && { defaultPriority: body.defaultPriority }),
+        ...(body.requiresPhoto !== undefined && { requiresPhoto: body.requiresPhoto }),
+        ...(body.reviewPolicy !== undefined && { reviewPolicy: body.reviewPolicy }),
+        ...(body.rewardAmount !== undefined && { rewardAmount: body.rewardAmount }),
+        ...(body.recurrence !== undefined && { recurrence: body.recurrence }),
+        ...(body.deadlineMinutes !== undefined && { deadlineMinutes: body.deadlineMinutes }),
+        ...(body.assignMode !== undefined && { assignMode: body.assignMode }),
+      },
+    });
+    if (body.checklist) {
+      // Submissions snapshot item text, so replacing the list never rewrites history.
+      await tx.choreChecklistItem.deleteMany({ where: { choreId } });
+      await tx.choreChecklistItem.createMany({
+        data: body.checklist.map((text, position) => ({ choreId, text, position })),
+      });
+    }
+    if (body.eligibleMembershipIds) {
+      await tx.choreEligible.deleteMany({ where: { choreId } });
+      await tx.choreEligible.createMany({
+        data: eligible.map((membershipId, position) => ({ choreId, membershipId, position })),
+      });
+    }
+
+    if (SCHEDULING_FIELDS.some((field) => body[field] !== undefined)) {
+      const { today } = await familyToday(tx, familyId, deps.now());
+      await removeUntouchedFuture(tx, familyId, today, choreId);
+      await planFamily(tx, familyId, deps.now());
+    }
+    return toChoreDto(await findChore(tx, familyId, choreId));
+  });
+}
+
+/** Archives a chore: no new occurrences, untouched future ones removed, history kept. */
+export async function archiveChore(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  choreId: string,
+): Promise<void> {
+  await requireParent(deps.db, familyId, userId);
+  await deps.db.$transaction(async (tx) => {
+    await findChore(tx, familyId, choreId);
+    await tx.chore.update({ where: { id: choreId }, data: { active: false } });
+    const { today } = await familyToday(tx, familyId, deps.now());
+    await removeUntouchedFuture(tx, familyId, today, choreId);
+  });
+}

@@ -232,13 +232,13 @@ Adapted rather than copied:
    - Families, kid profiles with PINs, member capacity, email invites.
    - **Kid sign-in (as built):** there is no public family join code. A parent signs in on a device once, then hands it to a kid with "switch to Billy" (no PIN needed for a parent). On a shared tablet, a kid switching to a sibling must enter that sibling's PIN, if one is set. Five wrong PINs lock the profile for 15 minutes. A 6-digit family code that anyone could enter would let strangers guess their way into a family, which is why the design doc's family PIN became per-kid PINs behind a parent sign-in.
    - Families always keep at least one parent. Only members with an email login can be parents.
-3. **Chores, submissions, and reviews API**
-   - CRUD for chores: checklist items, eligible members, review policy, reward amount, recurrence.
-   - Instance lists: today's, by member.
-   - Status-change endpoints that enforce the domain state machine and write audit events.
-   - Submissions (with checklist state) and reviews (approve / rework / reject, note, pin annotations).
-   - Paginated review queue and batch approve.
-4. **Jobs**: pg-boss setup, the instance-generation job, and the late-marking job, with integration tests against a real Postgres.
+3. ✅ **Chores, submissions, and reviews API**
+   - CRUD for chores: checklist items, eligible members, review policy, reward amount, recurrence (now including one-time `ONCE` chores).
+   - Agenda (Today view, carrying over unfinished chores from earlier days), range listing, and instance detail with full history.
+   - Status changes all go through one transition helper that enforces the domain state machine, rejects stale concurrent updates (409), and writes audit events.
+   - Submissions (with checklist state) and reviews (approve / rework / reject, note, pin annotations); paginated review queue and batch approve.
+   - **As built:** planning (turning chores into dated, assigned occurrences for the next 7 days) lives in Step 3, so a new chore appears immediately. Edits re-plan only untouched future occurrences (still NEW, never acted on); archiving removes those and keeps history. Capacity changes and member removal also re-plan.
+4. **Jobs**: pg-boss setup, the nightly planning run (reusing Step 3's planner), and the late-marking job, with integration tests against a real Postgres.
 5. **App shell + Today view**
    - Expo app with auth screens, family onboarding, and "who's using this device?".
    - Today view: chores grouped by status, with start, defer, and complete (with the checklist).

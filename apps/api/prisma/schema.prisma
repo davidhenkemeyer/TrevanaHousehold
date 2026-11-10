@@ -45,6 +45,8 @@ model Family {
 
   memberships Membership[]
   invites     Invite[]
+  chores      Chore[]
+  instances   ChoreInstance[]
 }
 
 /// A user's place in a family: their role, capacity, and points there.
@@ -67,6 +69,13 @@ model Membership {
 
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  choresCreated  Chore[]            @relation("ChoreCreatedBy")
+  eligibleFor    ChoreEligible[]
+  assignments    InstanceAssignee[]
+  events         InstanceEvent[]
+  submissions    Submission[]
+  reviewsWritten Review[]
 
   @@unique([familyId, userId])
   @@index([userId])
@@ -108,4 +117,194 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─── Chores ────────────────────────────────────────────────────────────────
+// Enum values must match the constants in packages/domain exactly
+// (checked by apps/api/src/modules/enums.test.ts).
+
+enum ChoreStatus {
+  NEW
+  IN_PROGRESS
+  DEFERRED
+  PENDING_REVIEW
+  APPROVED
+  NEEDS_REWORK
+  REJECTED
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum AssignMode {
+  FIXED
+  ROTATE
+  AUTO
+}
+
+enum ReviewPolicy {
+  REVIEW_EACH
+  BATCH_OK
+  AUTO_APPROVE
+}
+
+enum ReviewAction {
+  APPROVE
+  REQUEST_REWORK
+  REJECT
+}
+
+/// A chore definition ("template"). Its recurrence produces dated ChoreInstances.
+model Chore {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  familyId        String       @db.Uuid
+  name            String
+  description     String       @default("")
+  effortMinutes   Int
+  defaultPriority Priority     @default(NORMAL)
+  requiresPhoto   Boolean      @default(false)
+  reviewPolicy    ReviewPolicy @default(REVIEW_EACH)
+  /// In the family's reward currency (cents or points). Paid out from Step 8.
+  rewardAmount    Int          @default(0)
+  /// RecurrenceRule JSON; see packages/domain/src/recurrence.ts.
+  recurrence      Json
+  /// Due this long after the occurrence becomes available.
+  deadlineMinutes Int
+  assignMode      AssignMode
+  /// Archived chores stop producing occurrences; their history stays.
+  active          Boolean      @default(true)
+  createdById     String       @db.Uuid
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  family    Family               @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdBy Membership           @relation("ChoreCreatedBy", fields: [createdById], references: [id])
+  checklist ChoreChecklistItem[]
+  eligible  ChoreEligible[]
+  instances ChoreInstance[]
+
+  @@index([familyId, active])
+}
+
+model ChoreChecklistItem {
+  id       String @id @default(uuid(7)) @db.Uuid
+  choreId  String @db.Uuid
+  position Int
+  text     String
+
+  chore Chore @relation(fields: [choreId], references: [id], onDelete: Cascade)
+
+  @@index([choreId])
+}
+
+/// FIXED: the chore's owners. ROTATE/AUTO: the candidate pool, in rotation order.
+model ChoreEligible {
+  choreId      String @db.Uuid
+  membershipId String @db.Uuid
+  position     Int
+
+  chore      Chore      @relation(fields: [choreId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@id([choreId, membershipId])
+}
+
+/// One dated occurrence of a chore, assigned to one or more members.
+/// Never update `status` directly: go through modules/instances/transitions.ts.
+model ChoreInstance {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  choreId        String      @db.Uuid
+  familyId       String      @db.Uuid
+  /// Local calendar date in the family's time zone.
+  occurrenceDate DateTime    @db.Date
+  availableAt    DateTime
+  dueAt          DateTime
+  status         ChoreStatus @default(NEW)
+  isLate         Boolean     @default(false)
+  priority       Priority
+  /// Snapshots taken at planning time, so later chore edits don't change history.
+  rewardAmount   Int
+  effortMinutes  Int
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  chore       Chore              @relation(fields: [choreId], references: [id], onDelete: Cascade)
+  family      Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  assignees   InstanceAssignee[]
+  events      InstanceEvent[]
+  submissions Submission[]
+
+  @@unique([choreId, occurrenceDate])
+  @@index([familyId, occurrenceDate])
+  @@index([familyId, status])
+}
+
+model InstanceAssignee {
+  instanceId   String @db.Uuid
+  membershipId String @db.Uuid
+
+  instance   ChoreInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  membership Membership    @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@id([instanceId, membershipId])
+  @@index([membershipId])
+}
+
+/// Audit trail: one row per status change.
+model InstanceEvent {
+  id                String      @id @default(uuid(7)) @db.Uuid
+  instanceId        String      @db.Uuid
+  /// Null when the system acted (e.g. auto-approval, late marking).
+  actorMembershipId String?     @db.Uuid
+  action            String
+  fromStatus        ChoreStatus
+  toStatus          ChoreStatus
+  createdAt         DateTime    @default(now())
+
+  instance ChoreInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor    Membership?   @relation(fields: [actorMembershipId], references: [id])
+
+  @@index([instanceId])
+}
+
+/// One attempt at completing an occurrence: checklist state and photos.
+model Submission {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  instanceId     String   @db.Uuid
+  submittedById  String   @db.Uuid
+  submittedAt    DateTime
+  /// [{ itemId, text, checked }], with text snapshotted.
+  checklistState Json
+  /// Storage keys from the upload flow (Step 7). Never client-supplied URLs.
+  photoKeys      String[] @default([])
+
+  instance    ChoreInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  submittedBy Membership    @relation(fields: [submittedById], references: [id])
+  reviews     Review[]
+
+  @@index([instanceId])
+}
+
+/// A decision on a submission.
+model Review {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  submissionId String       @db.Uuid
+  /// Null for automatic approvals (AUTO_APPROVE policy).
+  reviewerId   String?      @db.Uuid
+  action       ReviewAction
+  note         String?
+  /// Pin annotations: { pins: [{ pin, xPercent, yPercent, comment }] }.
+  annotations  Json?
+  /// True when approved via "Approve all low-stakes".
+  batch        Boolean      @default(false)
+  createdAt    DateTime
+
+  submission Submission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer   Membership? @relation(fields: [reviewerId], references: [id])
+
+  @@index([submissionId])
 }

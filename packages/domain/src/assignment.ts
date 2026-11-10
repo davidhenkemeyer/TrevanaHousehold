@@ -24,6 +24,7 @@
  */
 import type { PlainDate } from "./calendar.js";
 import { weekdayOf } from "./calendar.js";
+import { minutesPerAssignee } from "./schedule.js";
 import type { Priority } from "./status.js";
 import { priorityRank } from "./status.js";
 
@@ -147,7 +148,7 @@ export function planAssignments(input: PlanInput): AssignmentPlan {
     let minutesEach: number;
     if (occ.mode === "FIXED") {
       assigneeIds = pool;
-      minutesEach = Math.ceil(occ.effortMinutes / pool.length);
+      minutesEach = minutesPerAssignee(occ.effortMinutes, pool.length);
     } else if (occ.mode === "ROTATE") {
       const previous = lastRotation.get(occ.choreId);
       const previousIndex = previous === undefined ? -1 : pool.indexOf(previous);

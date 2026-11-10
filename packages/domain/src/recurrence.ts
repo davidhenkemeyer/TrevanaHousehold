@@ -6,6 +6,8 @@
  * refuses invalid rules.
  *
  * Semantics:
+ *   - ONCE:      a one-time chore, on `startDate` only. (No interval, weekday,
+ *                month-day, or end date.)
  *   - DAILY:     every `interval` days, counted from `startDate`.
  *   - WEEKLY:    on `byWeekday` days (default: startDate's weekday) of every
  *                `interval`-th week. Weeks run Monday–Sunday and are counted
@@ -36,7 +38,7 @@ import {
 } from "./calendar.js";
 import { isPlainTime } from "./timezone.js";
 
-export const FREQUENCIES = ["DAILY", "WEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"] as const;
+export const FREQUENCIES = ["ONCE", "DAILY", "WEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
 
 export interface RecurrenceRule {
@@ -60,7 +62,7 @@ export const MAX_RANGE_DAYS = 3660;
 export const MAX_INTERVAL = 365;
 export const DEFAULT_TIME_OF_DAY = "00:00";
 
-const MONTHS_PER_PERIOD: Record<Exclude<Frequency, "DAILY" | "WEEKLY">, number> = {
+const MONTHS_PER_PERIOD: Record<Exclude<Frequency, "ONCE" | "DAILY" | "WEEKLY">, number> = {
   MONTHLY: 1,
   QUARTERLY: 3,
   ANNUAL: 12,
@@ -76,6 +78,12 @@ export function validateRecurrenceRule(rule: RecurrenceRule): string[] {
 
   if (!FREQUENCIES.includes(rule.freq)) {
     errors.push(`freq must be one of ${FREQUENCIES.join(", ")}`);
+  }
+  if (rule.freq === "ONCE") {
+    if (rule.interval !== undefined && rule.interval !== 1) {
+      errors.push("interval is not allowed for ONCE rules");
+    }
+    if (rule.endDate !== undefined) errors.push("endDate is not allowed for ONCE rules");
   }
   if (
     rule.interval !== undefined &&
@@ -153,6 +161,9 @@ export function occurrencesBetween(
 
   const interval = rule.interval ?? 1;
   switch (rule.freq) {
+    case "ONCE":
+      // lo = max(from, start), so the start date is in the window exactly when lo === start.
+      return lo === start ? [start] : [];
     case "DAILY":
       return dailyOccurrences(start, interval, lo, hi);
     case "WEEKLY":

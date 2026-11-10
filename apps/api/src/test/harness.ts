@@ -5,7 +5,14 @@
  *   const t = useTestApp();          // in a describe block
  *   const mom = await t.signup();    // { user, tokens, headers }
  */
-import type { AuthResponse, FamilyDetail, Member, Tokens } from "@chores/contracts";
+import type {
+  AgendaResponse,
+  AuthResponse,
+  Chore,
+  FamilyDetail,
+  Member,
+  Tokens,
+} from "@chores/contracts";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";
@@ -40,7 +47,19 @@ export interface TestApp {
   switchTo(caller: Session, familyId: string, membershipId: string, pin?: string): Promise<Session>;
   /** Trades a session's refresh token for a fresh one (as the app does when access expires). */
   refresh(session: Session): Promise<Session>;
+  /** Creates a chore. Defaults: "Dishes", 10 min, daily from T0's date, due in 12 h, AUTO. */
+  createChore(parent: Session, familyId: string, body?: Record<string, unknown>): Promise<Chore>;
+  agenda(session: Session, familyId: string, query?: string): Promise<AgendaResponse>;
 }
+
+/** Default chore fields for tests (T0 is Tuesday 2026-11-10, 06:00 in Chicago). */
+export const DEFAULT_CHORE = {
+  name: "Dishes",
+  effortMinutes: 10,
+  recurrence: { freq: "DAILY", startDate: "2026-11-10" },
+  deadlineMinutes: 12 * 60,
+  assignMode: "AUTO",
+} as const;
 
 export const PASSWORD = "correct horse battery";
 export const minutes = (n: number) => n * 60_000;
@@ -157,6 +176,19 @@ export function useTestApp(): TestApp {
       });
       expectStatus(res, 200);
       return asSession({ user: session.user, tokens: res.json<Tokens>() });
+    },
+    async createChore(parent, familyId, body = {}) {
+      const res = await t.request("POST", `/v1/families/${familyId}/chores`, {
+        session: parent,
+        body: { ...DEFAULT_CHORE, ...body },
+      });
+      expectStatus(res, 201);
+      return res.json<Chore>();
+    },
+    async agenda(session, familyId, query = "") {
+      const res = await t.request("GET", `/v1/families/${familyId}/agenda${query}`, { session });
+      expectStatus(res, 200);
+      return res.json<AgendaResponse>();
     },
   };
   return t;

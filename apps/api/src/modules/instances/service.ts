@@ -1,0 +1,267 @@
+import type {
+  AgendaResponse,
+  Instance,
+  InstanceActionBody,
+  InstanceDetail,
+  InstanceList,
+  ReplanResponse,
+  SubmitBody,
+  SubmitResponse,
+} from "@chores/contracts";
+import { type ChoreStatus, type PlainDate, daysBetween, priorityRank } from "@chores/domain";
+import { z } from "zod";
+import type { Deps } from "../../deps.js";
+import { badRequest, notFound } from "../../errors.js";
+import type { Membership, Prisma } from "../../generated/prisma/client.js";
+import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
+import { plainToDbDate } from "../../lib/dates.js";
+import { requireMember, requireParent } from "../access.js";
+import { type DbOrTx, familyToday, replanUntouched } from "./generate.js";
+import { transition } from "./transitions.js";
+import {
+  type Viewer,
+  detailExtras,
+  instanceInclude,
+  submissionInclude,
+  toInstanceDetailDto,
+  toInstanceDto,
+  toSubmissionDto,
+} from "./views.js";
+
+/** Not finished yet: shown on the Today view even if dated earlier. */
+const OUTSTANDING: ChoreStatus[] = [
+  "NEW",
+  "IN_PROGRESS",
+  "DEFERRED",
+  "NEEDS_REWORK",
+  "PENDING_REVIEW",
+];
+const MAX_LIST_RANGE_DAYS = 62;
+
+const viewerOf = (m: Membership): Viewer => ({ membershipId: m.id, role: m.role });
+
+const assignedTo = (memberId: string | undefined): Prisma.ChoreInstanceWhereInput =>
+  memberId === undefined ? {} : { assignees: { some: { membershipId: memberId } } };
+
+export async function loadInstance(
+  db: DbOrTx,
+  familyId: string,
+  instanceId: string,
+  viewer: Viewer,
+): Promise<Instance> {
+  const row = await db.choreInstance.findFirst({
+    where: { id: instanceId, familyId },
+    include: instanceInclude,
+  });
+  if (!row) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
+  return toInstanceDto(row, viewer);
+}
+
+/** The Today view: the date's chores plus anything still outstanding from earlier days. */
+export async function getAgenda(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  query: { date?: string | undefined; memberId?: string | undefined },
+): Promise<AgendaResponse> {
+  const member = await requireMember(deps.db, familyId, userId);
+  const date =
+    (query.date as PlainDate | undefined) ??
+    (await familyToday(deps.db, familyId, deps.now())).today;
+  const day = plainToDbDate(date);
+
+  const rows = await deps.db.choreInstance.findMany({
+    where: {
+      familyId,
+      ...assignedTo(query.memberId),
+      OR: [{ occurrenceDate: day }, { occurrenceDate: { lt: day }, status: { in: OUTSTANDING } }],
+    },
+    include: instanceInclude,
+  });
+  const viewer = viewerOf(member);
+  const items = rows
+    .map((row) => toInstanceDto(row, viewer))
+    .sort(
+      (a, b) =>
+        priorityRank(b.priority) - priorityRank(a.priority) ||
+        a.dueAt.localeCompare(b.dueAt) ||
+        a.choreName.localeCompare(b.choreName),
+    );
+  return { date, items };
+}
+
+const listCursorSchema = z.object({ d: z.string(), id: z.string() });
+
+export async function listInstances(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  query: {
+    from: string;
+    to: string;
+    memberId?: string | undefined;
+    status?: ChoreStatus | undefined;
+    cursor?: string | undefined;
+    limit: number;
+  },
+): Promise<InstanceList> {
+  const member = await requireMember(deps.db, familyId, userId);
+  const from = query.from as PlainDate;
+  const to = query.to as PlainDate;
+  if (daysBetween(from, to) < 0)
+    throw badRequest("INVALID_RANGE", "`from` must not be after `to`.");
+  if (daysBetween(from, to) > MAX_LIST_RANGE_DAYS) {
+    throw badRequest("RANGE_TOO_LARGE", `Ask for at most ${MAX_LIST_RANGE_DAYS} days at a time.`);
+  }
+  const after = decodeCursor(query.cursor, listCursorSchema);
+
+  const rows = await deps.db.choreInstance.findMany({
+    where: {
+      familyId,
+      ...assignedTo(query.memberId),
+      ...(query.status !== undefined && { status: query.status }),
+      occurrenceDate: { gte: plainToDbDate(from), lte: plainToDbDate(to) },
+      ...(after && {
+        OR: [
+          { occurrenceDate: { gt: new Date(after.d) } },
+          { occurrenceDate: new Date(after.d), id: { gt: after.id } },
+        ],
+      }),
+    },
+    orderBy: [{ occurrenceDate: "asc" }, { id: "asc" }],
+    take: query.limit + 1,
+    include: instanceInclude,
+  });
+  const page = rows.slice(0, query.limit);
+  const last = page.at(-1);
+  const viewer = viewerOf(member);
+  return {
+    items: page.map((row) => toInstanceDto(row, viewer)),
+    nextCursor:
+      rows.length > query.limit && last
+        ? encodeCursor({ d: last.occurrenceDate.toISOString(), id: last.id })
+        : null,
+  };
+}
+
+export async function getInstanceDetail(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  instanceId: string,
+): Promise<InstanceDetail> {
+  const member = await requireMember(deps.db, familyId, userId);
+  const where = { id: instanceId, familyId };
+  const [row, history] = await Promise.all([
+    deps.db.choreInstance.findFirst({ where, include: instanceInclude }),
+    deps.db.choreInstance.findFirst({ where, include: detailExtras }),
+  ]);
+  if (!row || !history) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
+  return toInstanceDetailDto(row, history, viewerOf(member));
+}
+
+/** start / defer / reset / cancel. */
+export async function actOnInstance(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  instanceId: string,
+  body: InstanceActionBody,
+): Promise<Instance> {
+  const member = await requireMember(deps.db, familyId, userId);
+  return deps.db.$transaction(async (tx) => {
+    await transition(tx, {
+      familyId,
+      instanceId,
+      action: body.action,
+      actor: member,
+      now: deps.now(),
+    });
+    return loadInstance(tx, familyId, instanceId, viewerOf(member));
+  });
+}
+
+/**
+ * "Done!": records a Submission and applies the complete action. A parent's
+ * completion, or one under an AUTO_APPROVE policy, is approved on the spot
+ * and gets an automatic APPROVE review so the history reads naturally.
+ */
+export async function submitInstance(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+  instanceId: string,
+  body: SubmitBody,
+): Promise<SubmitResponse> {
+  const member = await requireMember(deps.db, familyId, userId);
+  const now = deps.now();
+  return deps.db.$transaction(async (tx) => {
+    const instance = await tx.choreInstance.findFirst({
+      where: { id: instanceId, familyId },
+      include: { chore: { include: { checklist: { orderBy: { position: "asc" } } } } },
+    });
+    if (!instance) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
+
+    const checked = new Map(body.checklist.map((i) => [i.itemId, i.checked]));
+    const known = new Set(instance.chore.checklist.map((i) => i.id));
+    const unknown = [...checked.keys()].filter((id) => !known.has(id));
+    if (unknown.length > 0) {
+      throw badRequest(
+        "UNKNOWN_CHECKLIST_ITEM",
+        "The checklist changed since this screen loaded. Refresh and try again.",
+      );
+    }
+
+    const { result } = await transition(tx, {
+      familyId,
+      instanceId,
+      action: "complete",
+      actor: member,
+      hasPhoto: false, // photo uploads arrive in Step 7
+      now,
+    });
+
+    const submission = await tx.submission.create({
+      data: {
+        instanceId,
+        submittedById: member.id,
+        submittedAt: now,
+        checklistState: instance.chore.checklist.map((item) => ({
+          itemId: item.id,
+          text: item.text,
+          checked: checked.get(item.id) ?? false,
+        })),
+      },
+    });
+    if (result.status === "APPROVED") {
+      await tx.review.create({
+        data: {
+          submissionId: submission.id,
+          // A parent approving their own completion is recorded as them; AUTO_APPROVE as nobody.
+          reviewerId: member.role === "PARENT" ? member.id : null,
+          action: "APPROVE",
+          createdAt: now,
+        },
+      });
+    }
+
+    const fullSubmission = await tx.submission.findUniqueOrThrow({
+      where: { id: submission.id },
+      include: submissionInclude,
+    });
+    return {
+      instance: await loadInstance(tx, familyId, instanceId, viewerOf(member)),
+      submission: toSubmissionDto(fullSubmission),
+    };
+  });
+}
+
+/** Re-plans every untouched future occurrence from current chores and capacity. */
+export async function replanFamily(
+  deps: Deps,
+  userId: string,
+  familyId: string,
+): Promise<ReplanResponse> {
+  await requireParent(deps.db, familyId, userId);
+  return deps.db.$transaction((tx) => replanUntouched(tx, familyId, deps.now()));
+}

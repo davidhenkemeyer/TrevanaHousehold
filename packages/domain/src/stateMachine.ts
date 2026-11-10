@@ -43,6 +43,19 @@ export const CHORE_ACTIONS = [
 ] as const;
 export type ChoreAction = (typeof CHORE_ACTIONS)[number];
 
+/** A parent's decision on a submission (the verification spec's names), and the action it maps to. */
+export const REVIEW_DECISIONS = ["APPROVE", "REQUEST_REWORK", "REJECT"] as const;
+export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
+export const REVIEW_DECISION_ACTION: Record<ReviewDecision, ChoreAction> = {
+  APPROVE: "approve",
+  REQUEST_REWORK: "requestRework",
+  REJECT: "reject",
+};
+
+/** Actions taken directly on an instance (completion and review have their own endpoints). */
+export const DIRECT_ACTIONS = ["start", "defer", "reset", "cancel"] as const;
+export type DirectAction = (typeof DIRECT_ACTIONS)[number];
+
 /**
  * How a chore's completions are reviewed, set per chore by a parent:
  *   REVIEW_EACH  — every submission is reviewed individually (paid or high-stakes chores)

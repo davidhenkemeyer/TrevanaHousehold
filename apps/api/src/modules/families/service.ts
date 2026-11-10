@@ -24,6 +24,7 @@ import type { Prisma } from "../../generated/prisma/client.js";
 import { hashSecret, verifySecret } from "../../lib/secrets.js";
 import { requireMember, requireParent } from "../access.js";
 import { issueSession, revokeAllSessions } from "../auth/sessions.js";
+import { replanUntouched } from "../instances/generate.js";
 import { toFamilyDto, toMemberDto, toUserDto } from "../dto.js";
 
 /** Wrong PINs allowed before the profile locks, and for how long. */
@@ -178,7 +179,7 @@ export async function updateMember(
         },
       });
     }
-    return tx.membership.update({
+    const member = await tx.membership.update({
       where: { id: target.id },
       data: {
         role: nextRole,
@@ -187,6 +188,9 @@ export async function updateMember(
       },
       include: { user: true },
     });
+    // New capacity changes who should get which upcoming chores.
+    if (body.capacity !== undefined) await replanUntouched(tx, familyId, deps.now());
+    return member;
   });
   return toMemberDto(updated);
 }
@@ -208,6 +212,8 @@ export async function removeMember(
       where: { id: target.id },
       data: { active: false, pinHash: null, pinFailedAttempts: 0, pinLockedUntil: null },
     });
+    // Hand their untouched upcoming chores to the remaining members.
+    await replanUntouched(tx, familyId, deps.now());
     const otherFamilies = await tx.membership.count({
       where: { userId: target.userId, active: true },
     });

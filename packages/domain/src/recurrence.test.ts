@@ -10,6 +10,27 @@ import {
 const between = (rule: RecurrenceRule, from: string, to: string) =>
   occurrencesBetween(rule, d(from), d(to));
 
+describe("ONCE", () => {
+  const rule: RecurrenceRule = { freq: "ONCE", startDate: "2026-11-14" };
+
+  it("occurs only on its start date", () => {
+    expect(between(rule, "2026-11-01", "2026-11-30")).toEqual(["2026-11-14"]);
+    expect(between(rule, "2026-11-14", "2026-11-14")).toEqual(["2026-11-14"]);
+  });
+
+  it("is absent from windows that don't contain the date", () => {
+    expect(between(rule, "2026-11-15", "2026-11-30")).toEqual([]);
+    expect(between(rule, "2026-11-01", "2026-11-13")).toEqual([]);
+  });
+
+  it("rejects repeat settings", () => {
+    expect(validateRecurrenceRule({ ...rule, interval: 2 })).not.toEqual([]);
+    expect(validateRecurrenceRule({ ...rule, endDate: "2026-12-01" })).not.toEqual([]);
+    expect(validateRecurrenceRule({ ...rule, byWeekday: [1] })).not.toEqual([]);
+    expect(validateRecurrenceRule({ ...rule, byMonthDay: 1 })).not.toEqual([]);
+  });
+});
+
 describe("DAILY", () => {
   it("repeats every day by default", () => {
     expect(between({ freq: "DAILY", startDate: "2026-11-09" }, "2026-11-08", "2026-11-11")).toEqual(
