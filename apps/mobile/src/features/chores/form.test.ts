@@ -25,6 +25,7 @@ function chore(overrides: Partial<Chore> = {}): Chore {
     description: "",
     cue: null,
     kind: "ROUTINE",
+    xpOverride: null,
     effortMinutes: 10,
     defaultPriority: "NORMAL",
     requiresPhoto: false,

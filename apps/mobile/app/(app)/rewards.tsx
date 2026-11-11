@@ -20,6 +20,8 @@ import { BackLink, Segmented, Sheet } from "../../src/components/forms";
 import { Screen, errorMessage } from "../../src/components/Screen";
 import { AppText, Avatar, Button, Card, Chip, ErrorText, TextField } from "../../src/components/ui";
 import { describeEntry, parseAmountInput, signedAmount } from "../../src/features/rewards/format";
+import { BadgeGrid, LevelCard } from "../../src/features/progress/ProgressViews";
+import { useProgress } from "../../src/features/progress/useProgress";
 import { invalidateRewards, useRewards } from "../../src/features/rewards/useRewards";
 import { useApi, useFamily } from "../../src/state/AppProvider";
 import { colors, spacing } from "../../src/theme";
@@ -46,6 +48,8 @@ export default function Rewards() {
     (m) => m.member.membershipId === memberId,
   );
   const [entry, setEntry] = useState<Entry | null>(null);
+  const gamify = useProgress();
+  const progressRow = gamify.query.data?.members.find((m) => m.member.membershipId === memberId);
 
   const ledger = useInfiniteQuery({
     queryKey: ["ledger", familyId, memberId],
@@ -92,7 +96,7 @@ export default function Rewards() {
         <GradientHeader>
           <BackLink onPress={() => router.back()} />
           <AppText variant="h1" color={colors.onPrimary} accessibilityRole="header">
-            {isSelf ? "My rewards" : `${name}'s rewards`}
+            {isSelf ? "My progress" : `${name || progressRow?.member.displayName || ""}'s progress`}
           </AppText>
           {format && row && (
             <>
@@ -121,6 +125,16 @@ export default function Rewards() {
       <ErrorText
         message={errorMessage(rewards.summary.error ?? ledger.error ?? ask.error ?? cancel.error)}
       />
+
+      {gamify.enabled && progressRow && gamify.query.data && (
+        <View style={{ gap: spacing.md }}>
+          <LevelCard progress={progressRow} />
+          <AppText variant="bodyStrong" color={colors.textMuted} accessibilityRole="header">
+            {`Badges · ${progressRow.badges.length}`}
+          </AppText>
+          <BadgeGrid earned={progressRow.badges} all={gamify.query.data.allBadges} />
+        </View>
+      )}
 
       {currency === "NONE" && (
         <Card style={{ gap: spacing.md }}>

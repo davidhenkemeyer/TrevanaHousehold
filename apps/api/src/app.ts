@@ -24,6 +24,7 @@ import { choreRoutes } from "./modules/chores/routes.js";
 import { instanceRoutes } from "./modules/instances/routes.js";
 import { pairingPublicRoutes, pairingRoutes } from "./modules/pairing/routes.js";
 import { reviewRoutes } from "./modules/reviews/routes.js";
+import { progressRoutes } from "./modules/progress/routes.js";
 import { rewardRoutes } from "./modules/rewards/routes.js";
 import { familyRoutes } from "./modules/families/routes.js";
 import { inviteRoutes } from "./modules/invites/routes.js";
@@ -92,6 +93,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       await v1.register(reviewRoutes, { deps });
       await v1.register(uploadRoutes, { deps });
       await v1.register(rewardRoutes, { deps });
+      await v1.register(progressRoutes, { deps });
     },
     { prefix: "/v1" },
   );

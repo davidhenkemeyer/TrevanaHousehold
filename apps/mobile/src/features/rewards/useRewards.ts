@@ -9,7 +9,13 @@ import { useApi, useFamily } from "../../state/AppProvider";
 import { amountFormatter } from "./format";
 
 /** Query keys that change when anything about rewards or the job board changes. */
-export const REWARD_QUERY_KEYS = ["rewards", "ledger", "redemptions", "jobBoard"] as const;
+export const REWARD_QUERY_KEYS = [
+  "rewards",
+  "ledger",
+  "redemptions",
+  "jobBoard",
+  "progress",
+] as const;
 
 export function invalidateRewards(queryClient: QueryClient, familyId: string | undefined): void {
   for (const key of REWARD_QUERY_KEYS) {

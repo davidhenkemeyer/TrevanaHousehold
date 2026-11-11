@@ -22,6 +22,7 @@ function item(overrides: Partial<Instance>): Instance {
     priority: "NORMAL",
     effortMinutes: 10,
     rewardAmount: 0,
+    xp: 10,
     requiresPhoto: false,
     referencePhotoUrl: null,
     reviewPolicy: "REVIEW_EACH",

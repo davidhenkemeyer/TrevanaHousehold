@@ -17,6 +17,7 @@ export function ChoreCard({
   showAssignees,
   busy,
   rewardText,
+  xpText,
   onAction,
   onOpen,
 }: {
@@ -25,6 +26,8 @@ export function ChoreCard({
   busy: boolean;
   /** The reward in the family's currency ("+$2.00"); omitted when there's none to show. */
   rewardText?: string | undefined;
+  /** "+15 XP", when the family shows XP. */
+  xpText?: string | undefined;
   onAction: (action: CardAction) => void;
   onOpen: () => void;
 }) {
@@ -69,6 +72,7 @@ export function ChoreCard({
           {steps > 0 && <Chip label={`${steps} ${steps === 1 ? "STEP" : "STEPS"}`} />}
           {item.kind === "EXTRA_JOB" && <Chip label="EXTRA JOB" color={colors.info} />}
           {rewardText !== undefined && <Chip label={rewardText} color={colors.success} />}
+          {xpText !== undefined && <Chip label={xpText} color={colors.info} />}
         </View>
       </Pressable>
 

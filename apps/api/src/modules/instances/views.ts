@@ -9,7 +9,7 @@ import type {
   Review as ReviewDto,
   Submission as SubmissionDto,
 } from "@titan/contracts";
-import { type Role, availableActions, effectivePriority } from "@titan/domain";
+import { type Role, availableActions, effectivePriority, xpFor } from "@titan/domain";
 import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { Deps } from "../../deps.js";
@@ -138,6 +138,7 @@ export async function toInstanceDto(
     priority: effectivePriority(row.priority, row.status, row.isLate),
     effortMinutes: row.effortMinutes,
     rewardAmount: row.rewardAmount,
+    xp: xpFor(row.effortMinutes, row.chore.xpOverride),
     requiresPhoto: row.chore.requiresPhoto,
     referencePhotoUrl: row.chore.referencePhotoKey ? await sign(row.chore.referencePhotoKey) : null,
     reviewPolicy: row.chore.reviewPolicy,

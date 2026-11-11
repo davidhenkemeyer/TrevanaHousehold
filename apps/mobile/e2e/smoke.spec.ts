@@ -546,3 +546,60 @@ test("rewards: real money, with a payout larger than the balance", async ({ page
   await button(page, "Save correction").click();
   await expect(visible(page.getByLabel("Balance: -$3.50"))).toBeVisible();
 });
+
+test("progress: family goal, XP, a badge, and a level-up celebration", async ({ page }) => {
+  const { email, password, token, familyId } = await familyWithBilly("progress");
+  const family = await api<{ members: { id: string; displayName: string }[] }>(
+    `/v1/families/${familyId}`,
+    { token },
+  );
+  const billyId = family.members.find((m) => m.displayName === "Billy")!.id;
+  const today = new Date().toLocaleDateString("en-CA");
+  await api(`/v1/families/${familyId}/chores`, {
+    method: "POST",
+    token,
+    body: {
+      name: "Feed the fish",
+      effortMinutes: 60, // 60 XP: enough to reach level 2
+      recurrence: { freq: "DAILY", startDate: today },
+      deadlineMinutes: 24 * 60,
+      assignMode: "FIXED",
+      eligibleMembershipIds: [billyId],
+    },
+  });
+  await signIn(page, email, password);
+
+  // A shared family goal.
+  await tabOf(page, "Family").click();
+  await button(page, "Rewards settings").click();
+  await field(page, "Goal").fill("Pizza Night");
+  await button(page, "Start the goal").click();
+  await expect(text(page, 'Now: "Pizza Night", 0 of 1000 XP.')).toBeVisible();
+  await shot(page, "40-goal-settings");
+  await button(page, "Back").click();
+
+  // Billy sees the goal and what the chore is worth, then does it.
+  await switchPerson(page, "Billy");
+  await expect(text(page, "Pizza Night", true)).toBeVisible();
+  await expect(text(page, "+60 XP", true)).toBeVisible();
+  await expect(button(page, "My progress: Level 1")).toBeVisible();
+  await button(page, "Done ✓").click();
+  await expect(text(page, /Waiting for review · 1/)).toBeVisible();
+
+  await switchPerson(page, "Mom", "4321");
+  await tabOf(page, "Review").click();
+  await button(page, "Approve Feed the fish by Billy").click();
+  await expect(text(page, "All caught up!")).toBeVisible();
+
+  // Billy is told once: level 2 and his first badge; the goal moved.
+  await switchPerson(page, "Billy");
+  await expect(text(page, "🎉 Level 2!")).toBeVisible();
+  await expect(text(page, "🏅 New badge: First chore")).toBeVisible();
+  await expect(text(page, "60 / 1000 XP")).toBeVisible();
+  await shot(page, "41-celebration");
+  await button(page, "Nice!").click();
+  await button(page, "My progress: Level 2 · 1-day streak").click();
+  await expect(text(page, "Level 2", true)).toBeVisible();
+  await expect(visible(page.getByLabel("First chore, earned"))).toBeVisible();
+  await shot(page, "42-progress");
+});

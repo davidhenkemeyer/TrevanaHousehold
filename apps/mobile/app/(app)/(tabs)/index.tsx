@@ -11,7 +11,7 @@ import { Pressable, RefreshControl, View } from "react-native";
 import { GradientHeader, ProgressRing } from "../../../src/components/brand";
 import { Celebration } from "../../../src/components/Celebration";
 import { Screen, errorMessage } from "../../../src/components/Screen";
-import { AppText, Card, ErrorText } from "../../../src/components/ui";
+import { AppText, Button, Card, ErrorText } from "../../../src/components/ui";
 import { type CardAction, ChoreCard } from "../../../src/features/today/ChoreCard";
 import { CompleteSheet } from "../../../src/features/today/CompleteSheet";
 import {
@@ -22,6 +22,17 @@ import {
 } from "../../../src/features/today/sections";
 import { rewardLabel } from "../../../src/features/rewards/format";
 import { invalidateRewards, useRewards } from "../../../src/features/rewards/useRewards";
+import {
+  type News,
+  levelLine,
+  parseSeen,
+  seenKey,
+  seenNow,
+  whatsNew,
+} from "../../../src/features/progress/celebrate";
+import { GoalBar } from "../../../src/features/progress/ProgressViews";
+import { useProgress } from "../../../src/features/progress/useProgress";
+import { kv } from "../../../src/lib/kv";
 import { useApi, useFamily, useSession } from "../../../src/state/AppProvider";
 import { colors, radii, spacing } from "../../../src/theme";
 
@@ -35,6 +46,27 @@ export default function Today() {
   const [completing, setCompleting] = useState<Instance | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
+  const gamify = useProgress();
+  const showXp = gamify.enabled;
+  // New badges and level-ups since this device last looked: celebrated once.
+  const [news, setNews] = useState<News | null>(null);
+  const mineProgress = gamify.mine;
+  useEffect(() => {
+    if (!mineProgress || membershipId === undefined || !showXp) return;
+    let alive = true;
+    void kv.get(seenKey(membershipId)).then((raw) => {
+      if (!alive) return;
+      const found = whatsNew(mineProgress, parseSeen(raw));
+      if (found.level !== undefined || found.badges.length > 0) {
+        setNews(found);
+        setBurst((n) => n + 1);
+      }
+      void kv.set(seenKey(membershipId), JSON.stringify(seenNow(mineProgress)));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [mineProgress, membershipId, showXp]);
 
   useEffect(() => {
     if (role) setScope(defaultScope(role));
@@ -148,24 +180,44 @@ export default function Today() {
                   {`Hi ${session?.user.displayName ?? ""}!`}
                 </AppText>
                 <AppText color="#FFFFFF">{today}</AppText>
-                {rewards.format && rewards.mine && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`My rewards: ${rewards.format(rewards.mine.balance)}`}
-                    onPress={() => router.push("/rewards")}
-                    style={{
-                      alignSelf: "flex-start",
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      borderRadius: radii.pill,
-                      paddingVertical: spacing.xs,
-                      paddingHorizontal: spacing.md,
-                    }}
-                  >
-                    <AppText variant="bodyStrong" color="#FFFFFF">
-                      {`${rewards.format(rewards.mine.balance)} ›`}
-                    </AppText>
-                  </Pressable>
-                )}
+                <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
+                  {rewards.format && rewards.mine && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`My rewards: ${rewards.format(rewards.mine.balance)}`}
+                      onPress={() => router.push("/rewards")}
+                      style={{
+                        alignSelf: "flex-start",
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        borderRadius: radii.pill,
+                        paddingVertical: spacing.xs,
+                        paddingHorizontal: spacing.md,
+                      }}
+                    >
+                      <AppText variant="bodyStrong" color="#FFFFFF">
+                        {`${rewards.format(rewards.mine.balance)} ›`}
+                      </AppText>
+                    </Pressable>
+                  )}
+                  {showXp && gamify.mine && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`My progress: ${levelLine(gamify.mine)}`}
+                      onPress={() => router.push("/rewards")}
+                      style={{
+                        alignSelf: "flex-start",
+                        backgroundColor: "rgba(255,255,255,0.2)",
+                        borderRadius: radii.pill,
+                        paddingVertical: spacing.xs,
+                        paddingHorizontal: spacing.md,
+                      }}
+                    >
+                      <AppText variant="bodyStrong" color="#FFFFFF">
+                        {levelLine(gamify.mine)}
+                      </AppText>
+                    </Pressable>
+                  )}
+                </View>
               </View>
               <ProgressRing done={progress.done} total={progress.total} />
             </View>
@@ -176,6 +228,18 @@ export default function Today() {
         <ErrorText
           message={errorMessage(agenda.error ?? act.error ?? (completing ? null : submit.error))}
         />
+        {news && (
+          <Card style={{ gap: spacing.sm, borderColor: colors.primary }}>
+            {news.level !== undefined && (
+              <AppText variant="h2">{`🎉 Level ${news.level}!`}</AppText>
+            )}
+            {news.badges.map((label) => (
+              <AppText key={label} variant="bodyStrong">{`🏅 New badge: ${label}`}</AppText>
+            ))}
+            <Button title="Nice!" variant="ghost" onPress={() => setNews(null)} />
+          </Card>
+        )}
+        {showXp && gamify.goal && <GoalBar goal={gamify.goal} />}
         {agenda.isSuccess && sections.length === 0 && jobs.length === 0 && (
           <Card style={{ alignItems: "center", gap: spacing.sm }}>
             <AppText variant="h2">All clear!</AppText>
@@ -200,6 +264,7 @@ export default function Today() {
                 showAssignees={scope === "family"}
                 busy={busyId === item.id}
                 rewardText={rewardText(item)}
+                xpText={showXp ? `+${item.xp} XP` : undefined}
                 onAction={(action) => onAction(item, action)}
                 onOpen={() => router.push({ pathname: "/chore/[id]", params: { id: item.id } })}
               />
@@ -223,6 +288,7 @@ export default function Today() {
                 showAssignees={false}
                 busy={busyId === item.id}
                 rewardText={rewardText(item)}
+                xpText={showXp ? `+${item.xp} XP` : undefined}
                 onAction={(action) => onAction(item, action)}
                 onOpen={() => router.push({ pathname: "/chore/[id]", params: { id: item.id } })}
               />

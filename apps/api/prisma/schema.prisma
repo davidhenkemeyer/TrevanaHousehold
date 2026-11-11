@@ -44,6 +44,8 @@ model Family {
   rewardCurrency RewardCurrency @default(NONE)
   /// ISO code used when rewardCurrency is MONEY (amounts are in cents).
   currencyCode   String         @default("USD")
+  /// Show XP, levels, streaks, badges, and the family goal. Hiding them never deletes anything.
+  gamification   Boolean        @default(true)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -55,6 +57,8 @@ model Family {
   ledger      LedgerEntry[]
   rewardItems RewardItem[]
   redemptions Redemption[]
+  xpEntries   XpEntry[]
+  goals       FamilyGoal[]
 }
 
 /// A user's place in a family: their role and capacity there. (Reward
@@ -91,6 +95,8 @@ model Membership {
   ledgerWritten      LedgerEntry[]      @relation("LedgerCreatedBy")
   redemptions        Redemption[]       @relation("RedemptionMember")
   redemptionsDecided Redemption[]       @relation("RedemptionDecidedBy")
+  xpEntries          XpEntry[]
+  badges             MemberBadge[]
 
   @@unique([familyId, userId])
   @@index([userId])
@@ -222,6 +228,8 @@ model Chore {
   /// Situational trigger shown on the card, e.g. "After dinner" (branding doc: implementation intentions).
   cue               String?
   kind              ChoreKind    @default(ROUTINE)
+  /// XP for approving it; null = from effort (see packages/domain/src/gamification.ts).
+  xpOverride        Int?
   effortMinutes     Int
   defaultPriority   Priority     @default(NORMAL)
   requiresPhoto     Boolean      @default(false)
@@ -301,6 +309,7 @@ model ChoreInstance {
   events      InstanceEvent[]
   submissions Submission[]
   ledger      LedgerEntry[]
+  xpEntries   XpEntry[]
 
   @@unique([choreId, occurrenceDate])
   @@index([familyId, occurrenceDate])
@@ -501,4 +510,56 @@ model Redemption {
 
   @@index([familyId, status])
   @@index([membershipId])
+}
+
+/// XP earned when a chore is approved. Never deducted; a level is computed from the total.
+model XpEntry {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  familyId     String   @db.Uuid
+  membershipId String   @db.Uuid
+  instanceId   String   @db.Uuid
+  amount       Int
+  createdAt    DateTime
+
+  family     Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  membership Membership    @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  instance   ChoreInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  /// Approving a chore awards each assignee once.
+  @@unique([instanceId, membershipId])
+  @@index([familyId, createdAt])
+  @@index([membershipId])
+}
+
+/// A badge someone earned. Never removed. Rules live in packages/domain/src/gamification.ts.
+model MemberBadge {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  membershipId String   @db.Uuid
+  /// e.g. FIRST_CHORE, or MASTERY:<choreId>.
+  key          String
+  /// Snapshot, so renaming a chore doesn't rename an earned badge.
+  label        String
+  choreId      String?  @db.Uuid
+  awardedAt    DateTime
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, key])
+}
+
+/// A shared goal the whole family's XP fills ("Pizza & Movie Night"). One open at a time.
+model FamilyGoal {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  familyId  String    @db.Uuid
+  name      String
+  targetXp  Int
+  /// XP earned from this moment counts toward the goal.
+  startedAt DateTime
+  reachedAt DateTime?
+  /// Set when a parent ends it or starts a new one.
+  closedAt  DateTime?
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId, closedAt])
 }

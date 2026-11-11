@@ -38,6 +38,8 @@ export type Deadline = { kind: "endOfDay" } | { kind: "minutes"; minutes: number
 export interface ChoreForm {
   /** Routine (baseline duty) or extra job (optional, earns coins). */
   kind: ChoreKind;
+  /** Custom XP for approving it; null = from effort. */
+  xpOverride: number | null;
   name: string;
   description: string;
   cue: string;
@@ -116,6 +118,7 @@ export function describeDuration(minutes: number): string {
 export function newChoreForm(today: PlainDate): ChoreForm {
   return {
     kind: "ROUTINE",
+    xpOverride: null,
     name: "",
     description: "",
     cue: "",
@@ -146,6 +149,7 @@ export function formFromChore(chore: Chore): ChoreForm {
   const timeOfDay = r.timeOfDay ?? DEFAULT_TIME_OF_DAY;
   return {
     kind: chore.kind,
+    xpOverride: chore.xpOverride,
     name: chore.name,
     description: chore.description,
     cue: chore.cue ?? "",
@@ -190,6 +194,7 @@ export function toChoreBody(form: ChoreForm): CreateChoreBody {
   const cue = form.cue.trim();
   return {
     kind: form.kind,
+    xpOverride: form.xpOverride,
     name: form.name.trim(),
     description: form.description.trim(),
     cue: cue === "" ? null : cue,
@@ -232,6 +237,7 @@ const FRIENDLY: Partial<Record<keyof CreateChoreBody, string>> = {
   effortMinutes: "Effort must be 1 to 480 minutes.",
   deadlineMinutes: "The deadline must be between 1 minute and 90 days.",
   rewardAmount: "The reward must be a whole number, 0 or more.",
+  xpOverride: "XP must be a whole number from 1 to 500.",
   checklist: "Up to 20 steps, each up to 120 characters.",
 };
 

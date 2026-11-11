@@ -127,6 +127,7 @@ describe("rewards", () => {
         familyId,
         rewardAmount: 50,
         effortMinutes: 10,
+        xp: 10,
         assigneeIds: [billy.id],
       };
       await t.db.$transaction(async (tx) => {
@@ -134,6 +135,8 @@ describe("rewards", () => {
         await onApproved(tx, new Date(), approved);
       });
       expect(await t.db.ledgerEntry.count()).toBe(1);
+      expect(await t.db.xpEntry.count()).toBe(1);
+      expect(await t.db.memberBadge.count()).toBe(0); // nothing approved in the table yet
     });
 
     it("splits a shared chore's reward in whole units that add up", async () => {

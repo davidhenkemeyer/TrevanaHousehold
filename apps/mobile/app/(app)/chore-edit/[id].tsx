@@ -18,8 +18,11 @@ import {
   formatShortDate,
   formatTime12h,
   instantToPlainDate,
+  MAX_XP_OVERRIDE,
+  MIN_XP,
   ordinal,
   weekdayOf,
+  xpFor,
 } from "@titan/domain";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -510,6 +513,28 @@ export default function ChoreEditor() {
               : "Routines usually aren't paid, so kids do them because they're part of the family, not for the money."
         }
       >
+        <ToggleRow
+          label={`${form.xpOverride ?? xpFor(form.effortMinutes)} XP`}
+          hint={
+            form.xpOverride === null
+              ? `From effort: 1 XP per minute (at least ${MIN_XP}). Turn on to set your own.`
+              : "A custom amount. Turn off to use 1 XP per minute again."
+          }
+          value={form.xpOverride !== null}
+          onChange={(on) => update({ xpOverride: on ? xpFor(form.effortMinutes) : null })}
+        />
+        {form.xpOverride !== null && (
+          <Stepper
+            label="Custom XP"
+            display={`${form.xpOverride} XP`}
+            onDecrement={() => update({ xpOverride: Math.max(1, (form.xpOverride ?? 5) - 5) })}
+            onIncrement={() =>
+              update({ xpOverride: Math.min(MAX_XP_OVERRIDE, (form.xpOverride ?? 0) + 5) })
+            }
+            canDecrement={form.xpOverride > 1}
+            canIncrement={form.xpOverride < MAX_XP_OVERRIDE}
+          />
+        )}
         {coin === null ? (
           <Button
             title="Rewards settings"

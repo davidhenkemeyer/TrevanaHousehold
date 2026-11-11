@@ -28,6 +28,7 @@ export function toFamilyDto(family: Family): FamilyDto {
     timeZone: family.timeZone,
     rewardCurrency: family.rewardCurrency,
     currencyCode: family.currencyCode,
+    gamification: family.gamification,
     createdAt: family.createdAt.toISOString(),
   };
 }

@@ -47,6 +47,7 @@
 - The API lists CORS methods explicitly (`app.ts`). A new HTTP method needs adding there, or the web app can't call it.
 - **Photos:** clients never send or receive storage keys. They upload with a form from `POST /uploads` and refer to the photo by `uploadId`; responses carry signed URLs, made only in `instances/views.ts` (`photoSigner`) and the chore DTO. Storage is `Deps.storage` (`lib/storage`); tests use the in-memory fake (`t.storage`, `t.uploadPhoto`), so CI needs no storage server. Check uploads (`checkUploads`) outside transactions and claim them (`claimUploads`) inside.
 - **Rewards:** balances are never stored; they're sums over `LedgerEntry`, per member and currency. Entries are only added: chore rewards by `modules/rewards/hooks.ts` (`onApproved`), everything else by `modules/rewards/service.ts`. An amount only goes down through a payout, a redemption, or a correction (which needs a note). Spending points locks the member's row first. The arithmetic and formatting live in `packages/domain/src/rewards.ts`.
+- **XP and badges:** written only by `onApproved` (`modules/rewards/hooks.ts`), inside the approval transaction; never deducted or removed. Streaks are computed from history (`modules/progress/history.ts`), never stored. Rules (XP formula, level curve, streaks, badges) live in `packages/domain/src/gamification.ts`. Kids see only their own progress; there is no leaderboard.
 - **Job board:** `OPEN` chores create occurrences with `board: OPEN` and no assignee. `claim` / `release` go through `transition()` like any action; never change `board` or assignees for them anywhere else. Unclaimed jobs expire (`expireOpenInstance`), they don't go late.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
@@ -64,7 +65,8 @@ apps/mobile         Expo app (iOS / Android / web), Expo Router
   src/auth/         session manager (single-flight refresh), token storage
   src/components/   Titan UI building blocks (ui.tsx, forms.tsx, brand.tsx, PinPad, Celebration)
   src/features/     screen logic; the pure parts are unit-tested (today/sections, chores/form,
-                    review/queue, week/week, photos/pins + upload, rewards/format)
+                    review/queue, week/week, photos/pins + upload, rewards/format,
+                    progress/celebrate)
   e2e/              Playwright web smoke test (uses installed Edge)
 packages/tokens     Titan design tokens and per-app themes
 apps/api            Fastify API + background jobs
@@ -73,6 +75,7 @@ apps/api            Fastify API + background jobs
                     chores, instances (planning, agenda, actions, submissions), reviews,
                     uploads (photo upload forms, attach checks),
                     rewards (ledger, payouts, catalog, redemptions, job board listing),
+                    progress (XP, levels, streaks, badges, family goal),
                     notifications (hooks only until Step 10)
   src/lib/storage/  PhotoStorage interface + S3 adapter (s3.test.ts runs against local storage)
   src/jobs/         pg-boss scheduling; planning.ts, lateness.ts, photoCleanup.ts hold the job logic

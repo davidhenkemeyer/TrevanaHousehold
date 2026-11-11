@@ -13,6 +13,9 @@ import type {
   CreateFamilyBody,
   CreateInviteBody,
   CorrectionBody,
+  CreateGoalBody,
+  FamilyGoal,
+  Progress,
   CreateInviteResponse,
   CreateRewardItemBody,
   CreateUploadBody,
@@ -169,6 +172,12 @@ export function createApi(http: HttpClient) {
       http.request<Redemption>("POST", `${f(familyId)}/redemptions/${redemptionId}/decision`, body),
     cancelRedemption: (familyId: string, redemptionId: string) =>
       http.request<Redemption>("POST", `${f(familyId)}/redemptions/${redemptionId}/cancel`),
+
+    // Progress: XP, levels, streaks, badges, and the family goal
+    progress: (familyId: string) => http.request<Progress>("GET", `${f(familyId)}/progress`),
+    startGoal: (familyId: string, body: CreateGoalBody) =>
+      http.request<FamilyGoal>("POST", `${f(familyId)}/goal`, body),
+    closeGoal: (familyId: string) => http.request<void>("DELETE", `${f(familyId)}/goal`),
 
     // Job board: open jobs the viewer can claim (claim/release go through `act`)
     jobBoard: (familyId: string) => http.request<JobBoard>("GET", `${f(familyId)}/job-board`),

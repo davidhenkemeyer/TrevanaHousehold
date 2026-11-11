@@ -73,6 +73,8 @@ export const instanceSchema = z.object({
   priority: z.enum(PRIORITIES),
   effortMinutes: z.int(),
   rewardAmount: z.int(),
+  /** XP each assignee earns when it's approved. */
+  xp: z.int(),
   requiresPhoto: z.boolean(),
   /** "Make it look like this": the chore's reference photo, if it has one. */
   referencePhotoUrl: z.string().nullable(),

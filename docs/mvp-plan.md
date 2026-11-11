@@ -325,11 +325,23 @@ Adapted rather than copied:
      - **Job board:** assignment mode `OPEN`. The planner creates the occurrence with no assignee and charges nobody's capacity. `claim` and `release` ("Give back") are state-machine actions that go through `transition()`; the occurrence's `board` state (NONE / OPEN / CLAIMED) is updated with the same guard as status, so of two simultaneous claims exactly one wins (the other gets `ALREADY_CLAIMED`). While a job is on the board, only claim and cancel are possible. The late-marking job also expires unclaimed jobs past their deadline. (The plan called for a boolean `open` column; a three-value `board` state turned out clearer, since "Give back" needs to know a job came from the board.)
      - **App:** a balance chip on Today opens the rewards screen (balance, pending, catalog, requests, history); parents get everyone's balances there, "Record payout", and "Correction". Today shows a "Job board" section with "I'll do it". Rewards settings live under Family. No new tab.
      - XP, levels, and badges are Step 9.
-9. **Gamification**
+9. ✅ **Gamification**
    - On/off setting, XP on approval, levels.
    - Badge rules in `packages/domain` (including mastery badges for chores done without rework), awarded after each approval; streaks with preservers.
    - Shared family goal progress bar.
    - Badges, level, and the family goal shown on the rewards tab. No leaderboards.
+   - **Decisions:**
+     - A streak day counts when everything assigned to that person that day was handed in by its deadline (approved later is fine). Days with nothing assigned neither count nor break it; today never breaks it. Rejected work counts as missed; work sent back for rework counts if the first hand-in was on time.
+     - Every 7 days in a row earns a save (preserver), holding at most 2; a missed day uses one automatically.
+     - Everyone earns XP, levels, and badges, parents included, and everyone's XP fills the family goal.
+   - **As built:**
+     - **XP:** 1 per minute of effort, at least 5, or the chore's custom XP (1–500, set in the editor). Each person on a shared chore earns the full XP. Stored as `XpEntry` rows (one per approval and person), never deducted.
+     - **Levels:** level L needs 25 × L × (L − 1) XP in total (2 at 50, 3 at 150, 5 at 500, 10 at 2,250).
+     - **Streaks** are computed from the last 180 days of history every time, never stored, so nothing can wipe one.
+     - **Badges** (never removed): First chore, 10 / 50 / 100 chores, 7- and 30-day streaks, Clean week, Right first time (10 in a row without a redo), Helper (a job-board job), and "<chore> master" (the same chore 10 times without a redo). Awarded inside the approval transaction. New badges are code changes in `packages/domain/src/gamification.ts`.
+     - **Family goal:** parents start one (name and target XP); XP earned after it starts counts; it's marked reached when crossed; starting a new one closes the old.
+     - **Off switch:** hides XP and badges; they keep being recorded, so turning it back on loses nothing.
+     - **App:** a level/streak chip and the goal bar on Today, "+XP" on cards, a once-per-device celebration of level-ups and new badges (confetti), and a Progress section (level, streak, saves, badge grid with what each takes) at the top of the rewards screen, now titled "My progress". Settings live in Rewards settings.
 10. **Push notifications**
     - Register device tokens; per-user settings, defaulting to a daily digest.
     - Types: new chore assigned, chore late, submitted for review, approved, needs rework, rejected, canceled, reward request decided, badge earned.
@@ -341,6 +353,9 @@ Adapted rather than copied:
 
 - **Right after the MVP:** freehand drawing and 15-second voice notes in photo review.
 - **Later:** an Alexa skill (`apps/alexa`, Lambda) with OAuth account linking and intents like "what are my chores today" and "mark dishes done". Also Google Assistant/Home, and smarter scheduling (vacations, swapping chores).
+- **Later: real products as rewards (a wish list).** Inspired by gift-exchange apps like drawnames.app, which search real product listings. If the parents turn it on, kids can browse and search products from a retailer catalog and add real items to a wish list, priced in the family's currency (points or money). They can browse ahead of time and see how close they are ("$12 to go"), then ask for an item once they've earned enough. The request goes through the same parent approval as catalog rewards, and the parent does the actual buying.
+  - Parents stay in control: on/off, which stores, a price cap, an age-appropriate filter, and approving each item before it appears on a kid's list.
+  - Open questions for later: which product source (retailer affiliate APIs vs. a parent-pasted link with a fetched title, image, and price), how points map to real prices, keeping prices current, and keeping kids away from ads and checkout flows (kids never buy directly).
 
 ## Verification
 

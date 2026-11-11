@@ -89,6 +89,8 @@ export async function updateFamily(
       // Switching currency converts nothing: ledger entries keep their own currency.
       ...(body.rewardCurrency !== undefined && { rewardCurrency: body.rewardCurrency }),
       ...(body.currencyCode !== undefined && { currencyCode: body.currencyCode }),
+      // Hiding XP and badges deletes nothing; showing them again restores everything.
+      ...(body.gamification !== undefined && { gamification: body.gamification }),
     },
   });
   return getFamily(deps, userId, familyId);

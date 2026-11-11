@@ -11,7 +11,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { GradientHeader } from "../../src/components/brand";
-import { BackLink, ChoiceChips, FieldLabel, Section } from "../../src/components/forms";
+import { BackLink, ChoiceChips, FieldLabel, Section, ToggleRow } from "../../src/components/forms";
+import { useProgress } from "../../src/features/progress/useProgress";
 import { Screen, errorMessage } from "../../src/components/Screen";
 import { AppText, Button, ErrorText, TextField } from "../../src/components/ui";
 import { parseAmountInput } from "../../src/features/rewards/format";
@@ -27,6 +28,9 @@ const CURRENCY_HINT: Record<RewardCurrency, string> = {
     "Chores earn points, which kids trade for rewards you choose: screen time, picking dinner, a later bedtime.",
 };
 
+/** Family goal sizes: a family doing ~100 XP a day reaches 1,000 in about 10 days. */
+const GOAL_TARGETS = [500, 1000, 2000, 5000];
+
 export default function RewardsSettings() {
   const api = useApi();
   const router = useRouter();
@@ -34,6 +38,14 @@ export default function RewardsSettings() {
   const { familyId, family, role } = useFamily();
   const { currency, currencyCode, format } = useRewards();
   const [name, setName] = useState("");
+  const [goalName, setGoalName] = useState("");
+  const [goalTarget, setGoalTarget] = useState<number>(1000);
+  const goal = useProgress().goal;
+  const startGoal = useMutation({
+    mutationFn: () => api.startGoal(familyId!, { name: goalName.trim(), targetXp: goalTarget }),
+    onSuccess: () => setGoalName(""),
+    onSettled: () => invalidateRewards(queryClient, familyId),
+  });
   const [cost, setCost] = useState("");
 
   const refresh = () => {
@@ -43,8 +55,11 @@ export default function RewardsSettings() {
     invalidateRewards(queryClient, familyId);
   };
   const update = useMutation({
-    mutationFn: (body: { rewardCurrency?: RewardCurrency; currencyCode?: MoneyCode }) =>
-      api.updateFamily(familyId!, body),
+    mutationFn: (body: {
+      rewardCurrency?: RewardCurrency;
+      currencyCode?: MoneyCode;
+      gamification?: boolean;
+    }) => api.updateFamily(familyId!, body),
     onSettled: refresh,
   });
 
@@ -111,6 +126,54 @@ export default function RewardsSettings() {
                 do. Changing this later keeps what everyone has already earned.
               </AppText>
             </Section>
+
+            <Section
+              title="Levels and badges"
+              hint="Everyone earns XP for approved chores, levels up, keeps streaks, and collects badges. Nobody is ranked against anyone."
+            >
+              <ToggleRow
+                label="Show levels and badges"
+                hint="Turning this off hides them; nothing earned is lost."
+                value={family.data?.family.gamification ?? true}
+                onChange={(gamification) => update.mutate({ gamification })}
+              />
+            </Section>
+
+            {(family.data?.family.gamification ?? true) && (
+              <Section
+                title="Family goal"
+                hint="Everyone's XP fills one shared bar toward something you'll do together."
+              >
+                {goal && (
+                  <AppText color={colors.textMuted}>
+                    {goal.reachedAt
+                      ? `"${goal.name}" was reached! Start the next one below.`
+                      : `Now: "${goal.name}", ${goal.progressXp} of ${goal.targetXp} XP.`}
+                  </AppText>
+                )}
+                <TextField
+                  label="Goal"
+                  value={goalName}
+                  onChangeText={setGoalName}
+                  placeholder="Pizza & Movie Night"
+                  maxLength={60}
+                />
+                <FieldLabel>XP to reach it</FieldLabel>
+                <ChoiceChips
+                  options={GOAL_TARGETS.map((xp) => ({ value: xp, label: `${xp} XP` }))}
+                  value={goalTarget}
+                  onChange={setGoalTarget}
+                />
+                <ErrorText message={errorMessage(startGoal.error)} />
+                <Button
+                  title={goal ? "Start a new goal" : "Start the goal"}
+                  variant="secondary"
+                  onPress={() => startGoal.mutate()}
+                  loading={startGoal.isPending}
+                  disabled={goalName.trim() === ""}
+                />
+              </Section>
+            )}
 
             {currency === "POINTS" && format && (
               <Section

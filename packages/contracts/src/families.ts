@@ -25,6 +25,8 @@ export const updateFamilyBodySchema = createFamilyBodySchema
     rewardCurrency: z.enum(REWARD_CURRENCIES),
     /** Used when rewardCurrency is MONEY. */
     currencyCode: z.enum(MONEY_CODES),
+    /** Show XP, levels, streaks, badges, and the family goal. Hiding them deletes nothing. */
+    gamification: z.boolean(),
   })
   .partial();
 export type UpdateFamilyBody = z.infer<typeof updateFamilyBodySchema>;
@@ -35,6 +37,7 @@ export const familySchema = z.object({
   timeZone: z.string(),
   rewardCurrency: z.enum(REWARD_CURRENCIES),
   currencyCode: z.string(),
+  gamification: z.boolean(),
   createdAt: isoDateTimeSchema,
 });
 export type Family = z.infer<typeof familySchema>;

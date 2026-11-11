@@ -26,6 +26,7 @@ import {
   type TransitionResult,
   applyAction,
   shouldExpireOpen,
+  xpFor,
 } from "@titan/domain";
 import { AppError, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
@@ -64,6 +65,7 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
         select: {
           requiresPhoto: true,
           reviewPolicy: true,
+          xpOverride: true,
           eligible: { select: { membershipId: true } },
         },
       },
@@ -140,6 +142,7 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
       familyId: instance.familyId,
       rewardAmount: instance.rewardAmount,
       effortMinutes: instance.effortMinutes,
+      xp: xpFor(instance.effortMinutes, instance.chore.xpOverride),
       assigneeIds: instance.assignees.map((a) => a.membershipId),
     });
   }
