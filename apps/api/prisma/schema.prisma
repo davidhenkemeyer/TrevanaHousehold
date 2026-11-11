@@ -147,6 +147,19 @@ model RefreshToken {
   @@index([userId])
 }
 
+/// A push Expo accepted, waiting for its delivery receipt (ready after about
+/// 15 minutes, kept by Expo for a day). The receipt can report that the
+/// phone's token is dead, which the immediate response doesn't always know.
+model PushTicket {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  /// Expo's receipt id.
+  ticketId      String   @unique
+  expoPushToken String
+  createdAt     DateTime
+
+  @@index([createdAt])
+}
+
 /// A one-time code that signs a kid's own phone in to their profile, so a
 /// parent's password never has to be typed on the kid's device.
 model PairingCode {

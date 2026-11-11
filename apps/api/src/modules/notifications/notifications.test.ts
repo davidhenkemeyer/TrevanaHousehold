@@ -8,7 +8,11 @@ import type {
 } from "@titan/contracts";
 import { describe, expect, it } from "vitest";
 import { markLateInstances } from "../../jobs/lateness.js";
-import { sendDigests, sendInstantNotifications } from "../../jobs/notifications.js";
+import {
+  checkPushReceipts,
+  sendDigests,
+  sendInstantNotifications,
+} from "../../jobs/notifications.js";
 import { type Session, days, minutes, useTestApp } from "../../test/harness.js";
 
 /** T0 is Tuesday 2026-11-10, 06:00 in Chicago: inside the default quiet hours (21:00–07:00). */
@@ -339,6 +343,38 @@ describe("notifications", () => {
       advance(minutes(90));
       await sendDigests(jobDeps(), quiet);
       expect(await t.db.pushDevice.count()).toBe(0);
+    });
+    it("reads delivery receipts later and forgets tokens Apple or Google reject", async () => {
+      const { mom, familyId, billy, billySession } = await setup();
+      // Billy has two phones; one was reset since.
+      await registerPhone(billySession, "ExponentPushToken[old]");
+      await registerPhone(billySession, "ExponentPushToken[new]");
+      await choreFor(mom, familyId, billy);
+      advance(minutes(90)); // 07:30: Billy's digest goes to both
+      await sendDigests(jobDeps(), quiet);
+      const tickets = await t.db.pushTicket.findMany({ orderBy: { ticketId: "asc" } });
+      expect(tickets.map((x) => x.ticketId)).toEqual(["ticket-1", "ticket-2"]);
+
+      // Receipts aren't ready for 15 minutes: nothing is asked yet.
+      expect(await checkPushReceipts(jobDeps(), quiet)).toEqual({ checked: 0, deadTokens: 0 });
+      expect(t.push.receiptRequests).toEqual([]);
+
+      advance(minutes(15));
+      const oldTicket = tickets.find((x) => x.expoPushToken === "ExponentPushToken[old]")!;
+      const newTicket = tickets.find((x) => x.expoPushToken === "ExponentPushToken[new]")!;
+      t.push.receiptsById.set(oldTicket.ticketId, { ok: false, unregistered: true });
+      // The new phone's receipt isn't ready yet: its ticket waits for the next check.
+      expect(await checkPushReceipts(jobDeps(), quiet)).toEqual({ checked: 1, deadTokens: 1 });
+      expect((await t.db.pushDevice.findMany()).map((d) => d.expoPushToken)).toEqual([
+        "ExponentPushToken[new]",
+      ]);
+      expect((await t.db.pushTicket.findMany()).map((x) => x.id)).toEqual([newTicket.id]);
+
+      // A day later, a ticket with no receipt is dropped.
+      advance(days(1));
+      expect(await checkPushReceipts(jobDeps(), quiet)).toEqual({ checked: 0, deadTokens: 0 });
+      expect(await t.db.pushTicket.count()).toBe(0);
+      expect(await t.db.pushDevice.count()).toBe(1);
     });
   });
 });

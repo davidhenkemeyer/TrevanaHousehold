@@ -9,7 +9,8 @@
  *     requests, and how many other updates arrived. Nothing on an empty day.
  *
  * Everything is in the inbox regardless; these only decide what's pushed.
- * Tokens Expo reports as no longer registered are deleted.
+ * Tokens Expo reports as no longer registered are deleted, at send time and
+ * again from delivery receipts (checkPushReceipts).
  */
 import {
   type NotificationType,
@@ -49,7 +50,72 @@ async function deliver(
   if (dead.length > 0) {
     await deps.db.pushDevice.deleteMany({ where: { expoPushToken: { in: dead } } });
   }
+  // Keep accepted tickets so checkPushReceipts can read their receipts later.
+  const createdAt = deps.now();
+  const tickets = results.flatMap((r) =>
+    r.ok && r.ticketId ? [{ ticketId: r.ticketId, expoPushToken: r.to, createdAt }] : [],
+  );
+  if (tickets.length > 0) {
+    await deps.db.pushTicket.createMany({ data: tickets, skipDuplicates: true });
+  }
   return results.filter((r) => r.ok).length;
+}
+
+/** Expo has receipts ready about 15 minutes after a send... */
+const RECEIPT_READY_MS = 15 * 60_000;
+/** ...and keeps them for a day; older tickets are dropped unread. */
+const RECEIPT_KEPT_MS = 24 * 60 * 60_000;
+/** Tickets read per round (the Expo adapter splits requests further). */
+const RECEIPT_BATCH = 1000;
+
+/**
+ * Every 15 minutes: reads delivery receipts for pushes sent at least 15
+ * minutes ago and forgets tokens Apple or Google report as dead. A ticket is
+ * deleted once its receipt is read, or after a day without one.
+ */
+export async function checkPushReceipts(
+  deps: JobDeps,
+  log: Pick<FastifyBaseLogger, "info">,
+): Promise<{ checked: number; deadTokens: number }> {
+  const now = deps.now().getTime();
+  await deps.db.pushTicket.deleteMany({
+    where: { createdAt: { lt: new Date(now - RECEIPT_KEPT_MS) } },
+  });
+  let checked = 0;
+  let deadTokens = 0;
+  let cursor: string | undefined;
+  for (;;) {
+    const tickets = await deps.db.pushTicket.findMany({
+      where: {
+        createdAt: { lte: new Date(now - RECEIPT_READY_MS) },
+        ...(cursor !== undefined && { id: { gt: cursor } }),
+      },
+      orderBy: { id: "asc" },
+      take: RECEIPT_BATCH,
+    });
+    if (tickets.length === 0) break;
+    cursor = tickets.at(-1)?.id;
+    const receipts = await deps.push.receipts(tickets.map((t) => t.ticketId));
+    const read = tickets.filter((t) => receipts[t.ticketId] !== undefined);
+    const dead = [
+      ...new Set(
+        read.filter((t) => receipts[t.ticketId]?.unregistered).map((t) => t.expoPushToken),
+      ),
+    ];
+    if (dead.length > 0) {
+      const removed = await deps.db.pushDevice.deleteMany({
+        where: { expoPushToken: { in: dead } },
+      });
+      deadTokens += removed.count;
+    }
+    if (read.length > 0) {
+      await deps.db.pushTicket.deleteMany({ where: { id: { in: read.map((t) => t.id) } } });
+    }
+    checked += read.length;
+    if (tickets.length < RECEIPT_BATCH) break;
+  }
+  if (checked > 0) log.info({ checked, deadTokens }, "Checked push receipts");
+  return { checked, deadTokens };
 }
 
 export async function sendInstantNotifications(

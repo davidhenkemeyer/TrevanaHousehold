@@ -17,8 +17,21 @@ export interface PushResult {
   ok: boolean;
   /** The token no longer works (app uninstalled, token revoked): forget it. */
   unregistered: boolean;
+  /** When accepted: the id of the delivery receipt to check later. */
+  ticketId?: string;
+}
+
+export interface PushReceipt {
+  ok: boolean;
+  /** Apple or Google says the token is dead. */
+  unregistered: boolean;
 }
 
 export interface PushSender {
   send(messages: readonly PushMessage[]): Promise<PushResult[]>;
+  /**
+   * Delivery receipts by ticket id. Receipts that aren't ready yet (or have
+   * expired) are missing from the result.
+   */
+  receipts(ticketIds: readonly string[]): Promise<Record<string, PushReceipt>>;
 }

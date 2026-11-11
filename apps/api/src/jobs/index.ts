@@ -14,7 +14,7 @@ import { PgBoss } from "pg-boss";
 import type { AppConfig } from "../config.js";
 import type { Deps } from "../deps.js";
 import { expireOpenJobs, markLateInstances } from "./lateness.js";
-import { sendDigests, sendInstantNotifications } from "./notifications.js";
+import { checkPushReceipts, sendDigests, sendInstantNotifications } from "./notifications.js";
 import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
 
@@ -29,6 +29,8 @@ export const JOBS = {
   sendInstant: { name: "send-instant-notifications", cron: "* * * * *" },
   /** Every 15 minutes: each person's daily digest, once their local digest time passes. */
   sendDigests: { name: "send-digests", cron: "*/15 * * * *" },
+  /** Every 15 minutes: delivery receipts, to forget dead push tokens. */
+  checkPushReceipts: { name: "check-push-receipts", cron: "7,22,37,52 * * * *" },
 } as const;
 
 export interface RunningJobs {
@@ -70,6 +72,9 @@ export async function startJobs(
   });
   await boss.work(JOBS.sendDigests.name, async () => {
     await sendDigests(deps, log);
+  });
+  await boss.work(JOBS.checkPushReceipts.name, async () => {
+    await checkPushReceipts(deps, log);
   });
 
   log.info({ jobs: Object.values(JOBS).map((j) => j.name) }, "Background jobs started");

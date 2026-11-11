@@ -150,6 +150,7 @@ describe("background jobs", () => {
             [JOBS.cleanUpPhotos.name, JOBS.cleanUpPhotos.cron],
             [JOBS.sendInstant.name, JOBS.sendInstant.cron],
             [JOBS.sendDigests.name, JOBS.sendDigests.cron],
+            [JOBS.checkPushReceipts.name, JOBS.checkPushReceipts.cron],
           ].sort(),
         );
       } finally {

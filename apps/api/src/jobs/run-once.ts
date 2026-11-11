@@ -7,7 +7,7 @@ import { loadConfig } from "../config.js";
 import { createDb } from "../db.js";
 import { createExpoPush } from "../lib/push/expo.js";
 import { createS3Storage } from "../lib/storage/s3.js";
-import { sendDigests, sendInstantNotifications } from "./notifications.js";
+import { checkPushReceipts, sendDigests, sendInstantNotifications } from "./notifications.js";
 import { expireOpenJobs, markLateInstances } from "./lateness.js";
 import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
@@ -50,9 +50,11 @@ try {
     console.log({ sent: await sendInstantNotifications(deps, log) });
   } else if (job === "send-digests") {
     console.log({ digests: await sendDigests(deps, log) });
+  } else if (job === "check-push-receipts") {
+    console.log(await checkPushReceipts(deps, log));
   } else {
     console.error(
-      "Usage: run-once.ts <plan | mark-late | cleanup-photos | send-instant | send-digests>",
+      "Usage: run-once.ts <plan | mark-late | cleanup-photos | send-instant | send-digests | check-push-receipts | storage-setup>",
     );
     process.exitCode = 1;
   }

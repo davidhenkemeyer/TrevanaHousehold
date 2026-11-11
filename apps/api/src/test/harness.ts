@@ -127,6 +127,8 @@ export function useTestApp(): TestApp {
     storage.objects.clear();
     storage.deleted.length = 0;
     push.sent.length = 0;
+    push.receiptsById.clear();
+    push.receiptRequests.length = 0;
     push.dead.clear();
     await truncateAll(db);
   });
