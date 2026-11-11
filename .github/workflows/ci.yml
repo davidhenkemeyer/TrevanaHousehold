@@ -44,3 +44,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # The static web build (what the web host serves).
+      - run: pnpm --filter @titan/mobile export:web
+
+  # The production API image builds (catches Dockerfile breakage). Not pushed anywhere.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/api/Dockerfile -t titan-api:ci .

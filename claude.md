@@ -29,8 +29,9 @@
 - **App:** Expo (React Native + Expo Router + react-native-web), one codebase for iOS/Android/Web. (`apps/mobile`, Step 5)
 - **API:** Node + Fastify 5 + Zod 4 via `fastify-type-provider-zod`. Request/response schemas live in `packages/contracts`. (ts-rest was dropped: unmaintained, Zod 3 only.)
 - **DB:** PostgreSQL 16 via Prisma 7 (driver adapter `@prisma/adapter-pg`, config in `apps/api/prisma.config.ts`). Jobs via pg-boss (Step 4).
-- **Auth:** argon2id password/PIN hashes (`@node-rs/argon2`), 15-min HS256 access JWTs (`jose`), rotating single-use refresh tokens stored as SHA-256 hashes.
+- **Auth:** argon2id password/PIN hashes (`@node-rs/argon2`), 15-min HS256 access JWTs (`jose`), rotating single-use refresh tokens stored as SHA-256 hashes. The web app gets its refresh token as an httpOnly cookie (`titan_rt`, path `/v1/auth`) instead of in JSON.
 - **Storage / push:** S3-compatible photo storage (RustFS locally, pinned in docker-compose; MinIO no longer publishes images); Expo Push Notifications.
+- **Deploy:** `apps/api/Dockerfile` (Node 24, built from the repo root) and `fly.toml`; EAS profiles in `apps/mobile/eas.json`; the web build is static. The runbook is [docs/deploy.md](docs/deploy.md).
 - **Pinned on purpose:** TypeScript `~6.0` (typescript-eslint doesn't support TS 7 yet). Prisma `7.10.1` (npm's `latest` tag points at an 8.0 release candidate). Prisma 7 officially lists Node 20/22/24 but works on 26.
 
 ## Architecture rules
@@ -50,6 +51,8 @@
 - **XP and badges:** written only by `onApproved` (`modules/rewards/hooks.ts`), inside the approval transaction; never deducted or removed. Streaks are computed from history (`modules/progress/history.ts`), never stored. Rules (XP formula, level curve, streaks, badges) live in `packages/domain/src/gamification.ts`. Kids see only their own progress; there is no leaderboard.
 - **Notifications:** created only with `notify()` (`modules/notifications/service.ts`), inside the caller's transaction; it never sends anything and never tells the person who caused the event. Pushes are sent only by jobs (`jobs/notifications.ts`) through `Deps.push`; tests use the in-memory fake (`t.push`). Kinds, defaults, quiet hours, and wording live in `packages/domain/src/notifications.ts`.
 - **Job board:** `OPEN` chores create occurrences with `board: OPEN` and no assignee. `claim` / `release` go through `transition()` like any action; never change `board` or assignees for them anywhere else. Unclaimed jobs expire (`expireOpenInstance`), they don't go late.
+- **Web tokens:** requests from the web app send `X-Titan-Client: web`. Routes that issue tokens pass them through `deliverTokens()` (`plugins/webSession.ts`), which turns the refresh token into the cookie; refresh and logout read it with `presentedRefreshToken()`. The web app never stores a token in `localStorage` (`persistable()` in `auth/session.ts`). Services return `IssuedAuth`/`IssuedTokens` (always with the refresh token); only the route decides where it goes.
+- **Production config:** `loadConfig()` refuses development secrets and non-https origins or photo URLs when `NODE_ENV=production`. A new required production setting belongs in `productionProblems()` and `.env.production.example`.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
 - Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
@@ -99,7 +102,9 @@ docs/               plan, Titan suite notes
 - `pnpm --filter @titan/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
 - `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`. It needs an interactive terminal when a change could lose data (e.g. dropping a column). From a script: write the SQL with `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` into a new `prisma/migrations/<timestamp>_<name>/migration.sql`, then `pnpm --filter @titan/api db:deploy`.
 - `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222), using points, with a small rewards catalog and a "Wash the car" job on the job board
-- `pnpm --filter @titan/api job:plan` / `job:mark-late` (also expires unclaimed job-board jobs) / `job:cleanup-photos` / `job:send-instant` / `job:send-digests`: run a background job once, now
+- `pnpm --filter @titan/api job:plan` / `job:mark-late` (also expires unclaimed job-board jobs) / `job:cleanup-photos` / `job:send-instant` / `job:send-digests` / `job:check-push-receipts`: run a background job once, now
+- `pnpm --filter @titan/api storage:setup`: apply the photo bucket's CORS and lifecycle rules (production setup; see docs/deploy.md)
+- `docker build -f apps/api/Dockerfile -t titan-api .`: the production API image (migrations: `npm run db:deploy` inside it)
 - `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
 - `pnpm --filter @titan/mobile start`: Expo dev server (scan the QR code with Expo Go; the phone finds the API on this computer's LAN address). `web` opens it in a browser.
 - `pnpm --filter @titan/mobile export:web` then `pnpm --filter @titan/mobile exec expo serve --port 8081`: static web build

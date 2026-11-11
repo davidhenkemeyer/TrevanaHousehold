@@ -363,6 +363,15 @@ Adapted rather than copied:
     - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage. Set `S3_*` env vars, the bucket's CORS rule for the web origin, and a lifecycle rule as a backstop for the 90-day photo retention.
     - Deploy the web build as a static site.
     - Ship test builds through EAS: TestFlight for iOS, Play internal testing for Android.
+    - **As built (code, no accounts):** the runbook for every account step is [deploy.md](deploy.md).
+      - API container: `apps/api/Dockerfile` (Node 24, `pnpm deploy`, non-root) and an example `fly.toml`. Migrations run as the release command (`npm run db:deploy`). `/health` checks the database; `/health/live` doesn't.
+      - Production config checks: the API refuses to start with development secrets, missing or non-https `CORS_ORIGINS`, or a missing or non-https `S3_PUBLIC_URL`. `TRUST_PROXY` is for the host's proxy.
+      - Web sign-in: the refresh token is an httpOnly, SameSite=Lax cookie scoped to `/v1/auth`, for requests marked `X-Titan-Client: web` (that header is also the CSRF guard). The web app keeps no tokens in `localStorage`. Native apps are unchanged.
+      - Photo bucket: `storage:setup` applies the CORS rule and lifecycle rules (submission photos expire after 120 days as a backstop). Keys now start with the purpose (`submission/families/...`) so the rule can match them.
+      - Push delivery receipts: checked every 15 minutes; dead tokens are removed.
+      - App: `eas.json` profiles, `EAS_PROJECT_ID`, `usesNonExemptEncryption: false`, `expo-dev-client`, and an SPA fallback for the static web host.
+      - CI also builds the API image and the web export.
+    - **Open decisions (owner):** the domain (the web app and API must share a parent domain for the cookie), the bundle ID, hosting accounts, and R2 vs S3 for photos. R2 has no presigned POST, so uploads switch to presigned PUT if R2 is chosen.
 
 - **Right after the MVP:** freehand drawing and 15-second voice notes in photo review.
 - **Later:** an Alexa skill (`apps/alexa`, Lambda) with OAuth account linking and intents like "what are my chores today" and "mark dishes done". Also Google Assistant/Home, and smarter scheduling (vacations, swapping chores).

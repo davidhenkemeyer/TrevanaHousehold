@@ -1,56 +1,50 @@
 # Handoff: Titan Household
 
-State as of 10 Nov 2026, commit `8b1417f` on `main` (pushed to `origin`, https://github.com/davidhenkemeyer/TitanHousehold).
+State as of 11 Nov 2026, on `main` (pushed to `origin`, https://github.com/davidhenkemeyer/TitanHousehold).
 
 Titan Household is a family chore and habit app for iOS, Android, and the web. It's the first app of the Titan suite. Start with these:
 
 - [CLAUDE.md](CLAUDE.md): stack, architecture rules, layout, commands, and conventions. **Read this first.**
 - [docs/mvp-plan.md](docs/mvp-plan.md): data model, state machine, rules, the roadmap with "as built" notes per step, and every product decision made so far.
 - [docs/titan-suite.md](docs/titan-suite.md): what the other Titan apps will share, and the Titan Focus AI-coach design.
+- [docs/deploy.md](docs/deploy.md): the deploy and beta runbook (accounts, secrets, store builds).
 
 ## What's done
 
-Roadmap Steps 0–10 are built, tested, and committed. One or two commits per step:
+Roadmap Steps 0–10 are built, tested, and committed, and Step 11 is done as far as code goes. One or more commits per step:
 
-| Step | What it added                                                                            | Commit(s)            |
-| ---- | ---------------------------------------------------------------------------------------- | -------------------- |
-| 0    | Monorepo (pnpm, Turborepo), lint/format/typecheck, docker-compose, CI                    | `0c51fea`            |
-| 1    | Domain core: recurrence, chore state machine, capacity-based scheduling                  | `29ff9b4`            |
-| 2    | API foundation: database, auth, families, kid profiles with PINs, invites                | `9fc84c6`            |
-| 3    | Chores, planning, submissions, reviews (with the verification spec adopted in `d87a515`) | `5f6fa9d`            |
-| —    | Rename to Titan Household, branding, icon SVGs                                           | `2428452`, `d0ccfe0` |
-| 4    | Background jobs: rolling planning, late marking                                          | `afe8169`            |
-| 5    | The app: sign-in, Today view, kid-phone pairing, shared-device mode                      | `00ee56f`, `20f6768` |
-| 6    | Parent tools: chore editor, review queue (swipe), week view, daily time                  | `7fc63b4`, `3d81ca5` |
-| 7    | Photo proof, reference photos, pin mark-up, 90-day photo cleanup                         | `4fd7a64`            |
-| 8    | Rewards: money or points, ledger, payouts, catalog, redemptions, job board               | `291135b`            |
-| 9    | XP, levels, streaks with saves, badges, family goal                                      | `de8500e`            |
-| 10   | Notifications: in-app inbox, 7:30 AM daily digest, instant pushes, settings              | `8b1417f`            |
+| Step | What it added                                                                                                             | Commit(s)                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 0    | Monorepo (pnpm, Turborepo), lint/format/typecheck, docker-compose, CI                                                     | `0c51fea`                                                               |
+| 1    | Domain core: recurrence, chore state machine, capacity-based scheduling                                                   | `29ff9b4`                                                               |
+| 2    | API foundation: database, auth, families, kid profiles with PINs, invites                                                 | `9fc84c6`                                                               |
+| 3    | Chores, planning, submissions, reviews (with the verification spec adopted in `d87a515`)                                  | `5f6fa9d`                                                               |
+| —    | Rename to Titan Household, branding, icon SVGs                                                                            | `2428452`, `d0ccfe0`                                                    |
+| 4    | Background jobs: rolling planning, late marking                                                                           | `afe8169`                                                               |
+| 5    | The app: sign-in, Today view, kid-phone pairing, shared-device mode                                                       | `00ee56f`, `20f6768`                                                    |
+| 6    | Parent tools: chore editor, review queue (swipe), week view, daily time                                                   | `7fc63b4`, `3d81ca5`                                                    |
+| 7    | Photo proof, reference photos, pin mark-up, 90-day photo cleanup                                                          | `4fd7a64`                                                               |
+| 8    | Rewards: money or points, ledger, payouts, catalog, redemptions, job board                                                | `291135b`                                                               |
+| 9    | XP, levels, streaks with saves, badges, family goal                                                                       | `de8500e`                                                               |
+| 10   | Notifications: in-app inbox, 7:30 AM daily digest, instant pushes, settings                                               | `8b1417f`                                                               |
+| 11   | Deploy prep (code only): container, production config checks, web cookie sign-in, bucket setup, push receipts, EAS config | `9658555`, `6f1f84b`, `17ae521`, `6b6b1a8`, plus the CI and docs commit |
 
-Verification at `8b1417f`: format, lint, typecheck, and build all pass. 490 unit and API tests pass (domain 224, API 192, app 65, contracts 5, tokens 4). The 7 Playwright web end-to-end tests pass repeatedly. All of that runs locally; GitHub Actions should run the same checks, minus end-to-end and storage tests. Its result after the first push hasn't been checked (the GitHub CLI isn't installed on this machine).
+Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and API tests (domain 224, API 205, app 69, contracts 5, tokens 4) and 8 Playwright web tests pass. The production Docker image was built and run locally against Postgres with `NODE_ENV=production`: migrations, `/health`, sign-up, and a clean SIGTERM shutdown all work. GitHub Actions passed on the earlier pushes; it now also builds the Docker image and the web export.
 
 ## In progress
 
-- **Nothing is uncommitted.** The working tree is clean. The empty untracked `src/` and `tests/` folders at the root are leftovers and can be deleted.
-- **Step 11 planning is scheduled for 2:00 AM on 11 Nov**, as a one-time task in the Claude Code session that was open on the dev machine. It only exists in that session: if the session was closed, it didn't run, and Step 11 should be started by hand. It was told to plan only: explore the code without changing anything, write the plan, and wait for approval. No accounts, deploys, or spending.
+- **Step 11 is code-complete up to the account steps.** Everything left needs the owner: see [docs/deploy.md](docs/deploy.md), step 0 first.
+- **Waiting on a decision: R2 or S3 for photos.** Cloudflare R2 doesn't support presigned POST uploads, which the app uses today. Choosing S3 needs no code change. Choosing R2 needs a small switch to presigned PUT (sign the content type and length; the bucket CORS rule already allows PUT).
 
-## What's next: Step 11 (deploy and beta)
+## What's next
 
-From the plan, plus deploy items noted during earlier steps.
+**Needs the owner's accounts or decisions** (in the order of docs/deploy.md):
 
-**Needs the owner's accounts or decisions:**
-
-1. **Hosting:** the API as a container on Fly.io, Railway, or Render; managed Postgres (the plan suggests Neon); Cloudflare R2 or S3 for photos; the web build as a static site.
-2. **Photo storage, production setup:** set the `S3_*` env vars and a real `S3_SECRET_KEY` (the API refuses the dev key in production). Add a bucket CORS rule for the web origin and a lifecycle rule as a backstop for the 90-day photo retention.
-3. **Expo:** create an account and run `npx eas init` in `apps/mobile`; push tokens need the project ID. iPhone Expo Go then receives pushes; Android needs a development build. Store builds need APNs and FCM credentials, which EAS can create. Set `EXPO_ACCESS_TOKEN` only if enhanced push security is turned on.
-4. **App identity:** replace the placeholder bundle ID `com.titansuite.household`, make the final icons from the Titan icon set, and do a trademark check on the "Titan" names before store listings.
-5. **Test builds:** TestFlight for iOS and Play internal testing for Android, through EAS.
-
-**Code work that doesn't need accounts:**
-
-- **Web sign-in tokens:** they're in `localStorage`, which other scripts on the page can read. Move to httpOnly cookies before the web app goes public.
-- **Production config:** Dockerfile and config for the API, a health check, `prisma migrate deploy` on release, and choosing whether jobs run in the API (`RUN_JOBS`) or the separate worker.
-- **Expo delivery receipts:** checking them would find more dead push tokens; only the immediate send response is checked today.
+1. Pick a domain, with the web app and the API under it (the sign-in cookie needs a shared parent domain), and the bundle ID (`com.<domain>.household`; still the placeholder `com.titansuite.household`).
+2. Neon, R2 or S3 (then `storage:setup`), Fly.io (`fly launch`, secrets, `fly deploy`), and Cloudflare Pages.
+3. Expo: `eas init` to get the project id, then set `EAS_PROJECT_ID` and the API URL in `eas.json`.
+4. Apple Developer and Google Play accounts, then TestFlight and internal testing builds through EAS.
+5. Before listings: final icons, a trademark check on "Titan", a privacy policy, and the store privacy forms.
 
 **Known gaps and small follow-ups:**
 
@@ -71,6 +65,8 @@ From the plan, plus deploy items noted during earlier steps.
 - **Migrations that drop data:** `prisma migrate dev` refuses to run without an interactive terminal when a change could lose data. The workaround is in CLAUDE.md.
 - **Local storage is RustFS** (`rustfs/rustfs:1.0.4`), because MinIO no longer publishes images. Start it with `pnpm db:up`. In development the API signs photo URLs with this computer's Wi-Fi address so phones can reach them, preferring 192.168.x over VPN addresses.
 - **End-to-end tests:** rebuild the API before running them; a stale `dist` fails in confusing ways. Person switching is rate-limited per account (10 a minute), not per IP.
+- **Production mode locally:** `NODE_ENV=production` makes the API refuse development secrets and http URLs. To try the image, use an env file like `apps/api/.env.production.example` with throwaway values and https placeholders, and `host.docker.internal` for local Postgres.
+- **Web sign-in cookie:** it's scoped to `/v1/auth`. In browser tools and Playwright, look it up for an `/v1/auth/...` URL, not the API root.
 - **The rules that matter most** (details in CLAUDE.md):
   - Business rules live only in `packages/domain`.
   - Change chore status only through `transition()`.
