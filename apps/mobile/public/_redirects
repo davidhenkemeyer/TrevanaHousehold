@@ -1,0 +1,3 @@
+# Single-page app: every path loads the app, which routes itself
+# (Cloudflare Pages / Netlify syntax).
+/*  /index.html  200

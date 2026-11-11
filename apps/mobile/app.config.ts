@@ -1,17 +1,26 @@
 /**
- * Expo app configuration. The bundle ID is a placeholder until Step 11,
- * when it becomes the business's reverse domain (it can't change after the
- * first store release).
+ * Expo app configuration.
+ *
+ * Before the first store build (see docs/deploy.md):
+ *   - BUNDLE_ID: the business's reverse domain. It can't change after the
+ *     first store release. Still a placeholder.
+ *   - EAS project id: `npx eas init` prints it; put it in EAS_PROJECT_ID
+ *     below (or the EAS_PROJECT_ID env var). Push notifications need it.
+ * The API address for builds comes from EXPO_PUBLIC_API_URL (set per build
+ * profile in eas.json, and for the web build on the static host).
  */
 import type { ExpoConfig } from "expo/config";
 
-const BUNDLE_ID = "com.titansuite.household";
+const BUNDLE_ID = "com.titansuite.household"; // placeholder: replace before the first store build
+const EAS_PROJECT_ID: string | undefined = process.env.EAS_PROJECT_ID || undefined;
 
 const config: ExpoConfig = {
   name: "Titan Household",
   slug: "titan-household",
   scheme: "titanhousehold",
   version: "0.1.0",
+  // Store build numbers are managed by EAS (eas.json: appVersionSource "remote").
+  runtimeVersion: { policy: "appVersion" },
   orientation: "portrait",
   userInterfaceStyle: "light",
   // Generated from assets/brand by `pnpm --filter @titan/mobile icons`.
@@ -19,6 +28,8 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: BUNDLE_ID,
     supportsTablet: true, // family iPads are a primary shared device
+    // Only standard HTTPS encryption: skips TestFlight's export-compliance question.
+    config: { usesNonExemptEncryption: false },
   },
   android: {
     package: BUNDLE_ID,
@@ -33,6 +44,7 @@ const config: ExpoConfig = {
     output: "single",
     favicon: "./assets/generated/favicon.png",
   },
+  ...(EAS_PROJECT_ID && { extra: { eas: { projectId: EAS_PROJECT_ID } } }),
   plugins: [
     "expo-router",
     "expo-secure-store",
