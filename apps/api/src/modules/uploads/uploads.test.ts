@@ -65,7 +65,7 @@ describe("photos", () => {
       const form = res.json<CreateUploadResponse>();
       expect(form.url).toBe(FAKE_UPLOAD_URL);
       expect(form.fields.key).toMatch(
-        new RegExp(`^families/${familyId}/submission/[0-9a-f-]+\\.jpg$`),
+        new RegExp(`^submission/families/${familyId}/[0-9a-f-]+\\.jpg$`),
       );
       expect(form.maxBytes).toBe(8 * 1024 * 1024);
       expect(form.expiresAt).toBe(new Date(T0.getTime() + minutes(10)).toISOString());

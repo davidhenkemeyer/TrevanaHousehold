@@ -25,7 +25,8 @@
     "job:mark-late": "tsx --env-file-if-exists=.env src/jobs/run-once.ts mark-late",
     "job:cleanup-photos": "tsx --env-file-if-exists=.env src/jobs/run-once.ts cleanup-photos",
     "job:send-instant": "tsx --env-file-if-exists=.env src/jobs/run-once.ts send-instant",
-    "job:send-digests": "tsx --env-file-if-exists=.env src/jobs/run-once.ts send-digests"
+    "job:send-digests": "tsx --env-file-if-exists=.env src/jobs/run-once.ts send-digests",
+    "storage:setup": "tsx --env-file-if-exists=.env src/jobs/run-once.ts storage-setup"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1165.0",

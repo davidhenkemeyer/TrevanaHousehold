@@ -45,5 +45,8 @@ export function createFakeStorage(): FakeStorage {
     ensureBucket() {
       return Promise.resolve();
     },
+    configureBucket() {
+      return Promise.resolve();
+    },
   };
 }

@@ -15,6 +15,7 @@ import {
   HeadObjectCommand,
   NotFound,
   PutBucketCorsCommand,
+  PutBucketLifecycleConfigurationCommand,
   S3Client,
   S3ServiceException,
 } from "@aws-sdk/client-s3";
@@ -28,6 +29,20 @@ import {
   type UploadForm,
   signingTime,
 } from "./types.js";
+
+/** The web app uploads and shows photos from another origin. */
+function corsRules(origins: string[]) {
+  return {
+    CORSRules: [
+      {
+        AllowedOrigins: origins,
+        AllowedMethods: ["GET", "HEAD", "POST", "PUT"],
+        AllowedHeaders: ["*"],
+        MaxAgeSeconds: 3600,
+      },
+    ],
+  };
+}
 
 export function createS3Storage(config: StorageConfig): PhotoStorage {
   const client = (endpoint: string) =>
@@ -89,6 +104,35 @@ export function createS3Storage(config: StorageConfig): PhotoStorage {
       }
     },
 
+    async configureBucket({ corsOrigins, expireProofsAfterDays }) {
+      await internal.send(
+        new PutBucketCorsCommand({ Bucket, CORSConfiguration: corsRules(corsOrigins) }),
+      );
+      await internal.send(
+        new PutBucketLifecycleConfigurationCommand({
+          Bucket,
+          LifecycleConfiguration: {
+            Rules: [
+              {
+                // A backstop: the photo-cleanup job deletes proof photos 90 days
+                // after review. This catches anything it ever misses.
+                ID: "expire-submission-photos",
+                Status: "Enabled",
+                Filter: { Prefix: "submission/" },
+                Expiration: { Days: expireProofsAfterDays },
+              },
+              {
+                ID: "abort-incomplete-multipart",
+                Status: "Enabled",
+                Filter: { Prefix: "" },
+                AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+              },
+            ],
+          },
+        }),
+      );
+    },
+
     async ensureBucket() {
       try {
         await internal.send(new HeadBucketCommand({ Bucket }));
@@ -98,19 +142,7 @@ export function createS3Storage(config: StorageConfig): PhotoStorage {
       // The web app uploads and shows photos from another origin.
       if (config.corsOrigins.length > 0) {
         await internal.send(
-          new PutBucketCorsCommand({
-            Bucket,
-            CORSConfiguration: {
-              CORSRules: [
-                {
-                  AllowedOrigins: config.corsOrigins,
-                  AllowedMethods: ["GET", "HEAD", "POST"],
-                  AllowedHeaders: ["*"],
-                  MaxAgeSeconds: 3600,
-                },
-              ],
-            },
-          }),
+          new PutBucketCorsCommand({ Bucket, CORSConfiguration: corsRules(config.corsOrigins) }),
         );
       }
     },

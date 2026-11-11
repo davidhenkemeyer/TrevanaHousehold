@@ -25,7 +25,19 @@ const deps = {
 };
 
 try {
-  if (job === "plan") {
+  if (job === "storage-setup") {
+    // One-time production bucket setup (CORS for the web app, photo lifecycle).
+    const expireProofsAfterDays = config.photoRetentionDays + 30;
+    await deps.storage.configureBucket({
+      corsOrigins: config.storage.corsOrigins,
+      expireProofsAfterDays,
+    });
+    console.log({
+      bucket: config.storage.bucket,
+      corsOrigins: config.storage.corsOrigins,
+      expireProofsAfterDays,
+    });
+  } else if (job === "plan") {
     console.log(await planAllFamilies(deps, log));
   } else if (job === "mark-late") {
     console.log({

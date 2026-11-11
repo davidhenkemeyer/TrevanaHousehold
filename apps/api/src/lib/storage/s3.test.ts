@@ -112,6 +112,18 @@ describe.skipIf(!available)("S3 storage (local server)", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:8081");
   });
 
+  it("applies the production bucket setup (CORS and the proof-photo lifecycle)", async () => {
+    await storage.ensureBucket();
+    await storage.configureBucket({
+      corsOrigins: ["https://app.example.com"],
+      expireProofsAfterDays: 120,
+    });
+    await storage.configureBucket({
+      corsOrigins: ["https://app.example.com"],
+      expireProofsAfterDays: 120,
+    }); // idempotent
+  });
+
   it("returns null for a missing object", async () => {
     await storage.ensureBucket();
     expect(await storage.head(key())).toBeNull();

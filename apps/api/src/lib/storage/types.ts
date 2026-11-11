@@ -38,6 +38,11 @@ export interface PhotoStorage {
   delete(keys: readonly string[]): Promise<void>;
   /** Creates the bucket if missing and sets its CORS rule (development convenience). */
   ensureBucket(): Promise<void>;
+  /**
+   * Production setup, run once by `storage:setup`: the CORS rule for the web
+   * app and a lifecycle rule expiring proof photos (a backstop for cleanup).
+   */
+  configureBucket(options: { corsOrigins: string[]; expireProofsAfterDays: number }): Promise<void>;
 }
 
 export const SIGNED_URL_BUCKET_MS = 10 * 60_000;

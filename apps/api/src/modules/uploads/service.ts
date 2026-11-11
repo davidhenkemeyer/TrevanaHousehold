@@ -42,7 +42,9 @@ export async function createUpload(
     throw forbidden("PARENT_REQUIRED", "Only a parent can set a chore's reference photo.");
   }
   const now = deps.now();
-  const key = `families/${familyId}/${body.purpose.toLowerCase()}/${randomUUID()}.${EXTENSIONS[body.contentType]}`;
+  // Purpose first ("submission/...", "reference/..."), so a bucket lifecycle rule
+  // can expire proof photos by prefix as a backstop (see storage:setup).
+  const key = `${body.purpose.toLowerCase()}/families/${familyId}/${randomUUID()}.${EXTENSIONS[body.contentType]}`;
   const expiresAt = new Date(now.getTime() + UPLOAD_FORM_TTL_SECONDS * 1000);
   const form = await deps.storage.createUploadForm({
     key,
