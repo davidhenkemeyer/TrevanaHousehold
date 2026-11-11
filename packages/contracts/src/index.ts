@@ -14,3 +14,4 @@ export * from "./reviews.js";
 export * from "./uploads.js";
 export * from "./rewards.js";
 export * from "./progress.js";
+export * from "./notifications.js";

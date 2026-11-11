@@ -37,6 +37,7 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-secure-store",
     "expo-font",
+    ["expo-notifications", { color: "#059669" }],
     [
       "expo-image-picker",
       {

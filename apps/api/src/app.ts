@@ -16,6 +16,8 @@ import type { Db } from "./db.js";
 import type { Deps } from "./deps.js";
 import { registerErrorHandling } from "./errors.js";
 import { createAccessTokenService } from "./lib/accessTokens.js";
+import { createExpoPush } from "./lib/push/expo.js";
+import type { PushSender } from "./lib/push/types.js";
 import { createS3Storage } from "./lib/storage/s3.js";
 import type { PhotoStorage } from "./lib/storage/types.js";
 import { uploadRoutes } from "./modules/uploads/routes.js";
@@ -24,6 +26,7 @@ import { choreRoutes } from "./modules/chores/routes.js";
 import { instanceRoutes } from "./modules/instances/routes.js";
 import { pairingPublicRoutes, pairingRoutes } from "./modules/pairing/routes.js";
 import { reviewRoutes } from "./modules/reviews/routes.js";
+import { notificationRoutes } from "./modules/notifications/routes.js";
 import { progressRoutes } from "./modules/progress/routes.js";
 import { rewardRoutes } from "./modules/rewards/routes.js";
 import { familyRoutes } from "./modules/families/routes.js";
@@ -35,6 +38,8 @@ export interface BuildAppOptions {
   now?: () => Date;
   /** Default: S3-compatible storage from config.storage. Tests pass an in-memory fake. */
   storage?: PhotoStorage;
+  /** Default: Expo push. Tests pass an in-memory fake. */
+  push?: PushSender;
 }
 
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
@@ -44,6 +49,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     db,
     accessTokens: createAccessTokenService(config.jwtSecret, config.accessTokenTtlSeconds),
     storage: options.storage ?? createS3Storage(config.storage),
+    push: options.push ?? createExpoPush(config.expoAccessToken),
     now: options.now ?? (() => new Date()),
   };
 
@@ -94,6 +100,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       await v1.register(uploadRoutes, { deps });
       await v1.register(rewardRoutes, { deps });
       await v1.register(progressRoutes, { deps });
+      await v1.register(notificationRoutes, { deps });
     },
     { prefix: "/v1" },
   );

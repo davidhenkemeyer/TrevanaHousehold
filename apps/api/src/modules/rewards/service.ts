@@ -29,13 +29,20 @@ import type {
   RewardsSummary,
   UpdateRewardItemBody,
 } from "@titan/contracts";
-import { type CoinCurrency, type RedemptionStatus, canRedeem, earnings } from "@titan/domain";
+import {
+  type CoinCurrency,
+  type RedemptionStatus,
+  canRedeem,
+  earnings,
+  formatAmount,
+} from "@titan/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { AppError, conflict, forbidden, notFound } from "../../errors.js";
 import type { Membership, Prisma, RewardItem } from "../../generated/prisma/client.js";
 import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
 import { requireMember, requireParent } from "../access.js";
+import { displayNameOf, notify, parentsOf } from "../notifications/service.js";
 import {
   inPool,
   instanceInclude,
@@ -403,6 +410,18 @@ export async function requestRedemption(
         createdAt: now,
       },
     });
+    await notify(tx, now, {
+      familyId,
+      to: await parentsOf(tx, familyId),
+      exclude: member.id,
+      type: "REDEMPTION_REQUESTED",
+      details: {
+        actorName: redemption.membership.user.displayName,
+        itemName: item.name,
+        costText: formatAmount("POINTS", null, item.cost),
+      },
+      data: { redemptionId: redemption.id },
+    });
     return toRedemptionDto(redemption);
   });
 }
@@ -458,6 +477,21 @@ async function closeRedemption(
     });
     if (updated.count === 0) {
       throw new AppError(409, "ALREADY_DECIDED", "That request was already answered.");
+    }
+    if (status !== "CANCELED") {
+      await notify(tx, now, {
+        familyId,
+        to: [existing.membershipId],
+        exclude: by.id,
+        type: "REDEMPTION_DECIDED",
+        details: {
+          actorName: await displayNameOf(tx, by.id),
+          itemName: existing.itemName,
+          approved: status === "APPROVED",
+          note: note ?? null,
+        },
+        data: { redemptionId },
+      });
     }
     if (status !== "APPROVED") {
       await tx.ledgerEntry.create({

@@ -603,3 +603,71 @@ test("progress: family goal, XP, a badge, and a level-up celebration", async ({ 
   await expect(visible(page.getByLabel("First chore, earned"))).toBeVisible();
   await shot(page, "42-progress");
 });
+
+test("notifications: the inbox and per-kind settings", async ({ page }) => {
+  const { email, password, token, familyId } = await familyWithBilly("inbox");
+  const family = await api<{ members: { id: string; displayName: string }[] }>(
+    `/v1/families/${familyId}`,
+    { token },
+  );
+  const billyId = family.members.find((m) => m.displayName === "Billy")!.id;
+  await api(`/v1/families/${familyId}/chores`, {
+    method: "POST",
+    token,
+    body: {
+      name: "Sweep the porch",
+      effortMinutes: 10,
+      recurrence: { freq: "DAILY", startDate: new Date().toLocaleDateString("en-CA") },
+      deadlineMinutes: 24 * 60,
+      assignMode: "FIXED",
+      eligibleMembershipIds: [billyId],
+    },
+  });
+  await signIn(page, email, password);
+
+  // Billy has been told about his new chore, and hands it in.
+  await switchPerson(page, "Billy");
+  await tabOf(page, "Me").click();
+  await expect(button(page, "Notifications (1 new)")).toBeVisible();
+  await button(page, "Notifications (1 new)").click();
+  await expect(text(page, "New chore: Sweep the porch")).toBeVisible();
+  await button(page, "Mark all read").click();
+  await expect(text(page, "You're all caught up.")).toBeVisible();
+  await button(page, "Back").click();
+  await tabOf(page, "Today").click();
+  await button(page, "Done ✓").click();
+  await expect(text(page, /Waiting for review · 1/)).toBeVisible();
+
+  // Mom is told, and sends it back with a note.
+  await switchPerson(page, "Mom", "4321");
+  await tabOf(page, "Me").click();
+  await button(page, "Notifications (1 new)").click();
+  await expect(text(page, "Billy handed in Sweep the porch")).toBeVisible();
+  await shot(page, "50-parent-inbox");
+  await visible(page.getByRole("button", { name: /New: Billy handed in Sweep the porch/ })).click();
+  await button(page, "Needs work").click();
+  await field(page, "Note (optional)").fill("The steps too");
+  await button(page, "Send back").click();
+  await expect(text(page, "Billy says it's done")).toBeHidden();
+  await button(page, "Back").click(); // to the inbox
+  await button(page, "Back").click(); // to the Me tab
+
+  // Billy sees it; tapping it opens the chore.
+  await switchPerson(page, "Billy");
+  await tabOf(page, "Me").click();
+  await button(page, "Notifications (1 new)").click();
+  await expect(text(page, "Mom says: The steps too")).toBeVisible();
+  await shot(page, "51-kid-inbox");
+  await visible(page.getByRole("button", { name: /New: Try again: Sweep the porch/ })).click();
+  await expect(text(page, "Mom asked for another try")).toBeVisible();
+  await button(page, "Back").click();
+
+  // His settings: kids don't see parent-only kinds; "Approved" can be turned off.
+  await button(page, "Notification settings").click();
+  await expect(text(page, "When someone hands in a chore")).toBeHidden();
+  await button(page, "When your chore is approved: Off").click();
+  await expect(
+    visible(page.getByRole("button", { name: "When your chore is approved: Off" })),
+  ).toHaveAttribute("aria-selected", "true");
+  await shot(page, "52-settings");
+});

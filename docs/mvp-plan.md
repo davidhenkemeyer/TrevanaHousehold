@@ -342,9 +342,22 @@ Adapted rather than copied:
      - **Family goal:** parents start one (name and target XP); XP earned after it starts counts; it's marked reached when crossed; starting a new one closes the old.
      - **Off switch:** hides XP and badges; they keep being recorded, so turning it back on loses nothing.
      - **App:** a level/streak chip and the goal bar on Today, "+XP" on cards, a once-per-device celebration of level-ups and new badges (confetti), and a Progress section (level, streak, saves, badge grid with what each takes) at the top of the rewards screen, now titled "My progress". Settings live in Rewards settings.
-10. **Push notifications**
+10. ✅ **Push notifications**
     - Register device tokens; per-user settings, defaulting to a daily digest.
     - Types: new chore assigned, chore late, submitted for review, approved, needs rework, rejected, canceled, reward request decided, badge earned.
+    - **Decisions:**
+      - The daily digest goes out at 7:30 AM family time (each person can change it). Kids: today's chores and anything to try again. Parents: what's waiting for review and reward requests. Nothing is sent on an empty day.
+      - Instant by default only for "sent back to try again" (kid) and reward requests (parent). Quiet hours 9 PM to 7 AM; instant ones wait until they end. Every kind can be set to Right away, Daily digest, or Off per person.
+      - Shared family devices get no pushes; everyone has an in-app inbox.
+    - **As built:**
+      - Every notification is a `Notification` row (the inbox), created only through `notify()` inside the transaction that caused it; the person who caused it is never told. Pushes are sent only by jobs: `send-instant-notifications` (every minute) and `send-digests` (every 15 minutes, once a day per person). Expo push tokens are in `PushDevice`, one per phone, moving to whoever signs in on it; tokens Expo rejects are deleted. Also added: Goal reached and Someone asks for a reward.
+      - "Off" stops the push only; it still lands in the inbox.
+      - App: the inbox (Me tab, with an unread badge), notification settings, push registration on personal phones (unregistered on sign-out and in shared-device mode), and tapping a push opens the chore. Web: inbox only.
+    - **To get real pushes on a phone (one-time setup, needs your accounts):**
+      1. Create a free Expo account and run `npx eas init` in `apps/mobile`. It adds the project id to the app config, which push tokens require.
+      2. iPhone: Expo Go can receive pushes once the project id exists. Android: Expo Go no longer receives remote pushes; make a development build (`npx eas build --profile development --platform android`).
+      3. Optional: if "enhanced push security" is turned on for the Expo project, set `EXPO_ACCESS_TOKEN` for the API.
+      4. Store builds (Step 11) need APNs and FCM credentials, which EAS can create.
 11. **Deploy + beta**
     - Final app icons from the Titan icon set; trademark check on the "Titan" names before store listings.
     - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage. Set `S3_*` env vars, the bucket's CORS rule for the web origin, and a lifecycle rule as a backstop for the 90-day photo retention.

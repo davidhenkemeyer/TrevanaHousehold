@@ -12,6 +12,7 @@ import {
   ReviewIcon,
   TodayIcon,
 } from "../../../src/components/icons";
+import { useUnreadCount } from "../../../src/features/notifications/usePush";
 import { useRedemptionRequests } from "../../../src/features/rewards/RedemptionRequests";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, typography } from "../../../src/theme";
@@ -32,6 +33,7 @@ export default function TabsLayout() {
   const requests = useRedemptionRequests(isParent).data?.length ?? 0;
   const count = (waiting.data ?? 0) + requests;
   const badge = isParent && count > 0 ? count : undefined;
+  const unread = useUnreadCount();
 
   return (
     <Tabs
@@ -84,7 +86,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="me"
-        options={{ title: "Me", tabBarIcon: ({ color }) => <MeIcon color={color} /> }}
+        options={{
+          title: "Me",
+          tabBarIcon: ({ color }) => <MeIcon color={color} />,
+          tabBarBadge: unread > 0 ? unread : undefined,
+        }}
       />
     </Tabs>
   );

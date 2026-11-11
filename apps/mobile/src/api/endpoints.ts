@@ -13,6 +13,10 @@ import type {
   CreateFamilyBody,
   CreateInviteBody,
   CorrectionBody,
+  Inbox,
+  NotificationSettings,
+  RegisterDeviceBody,
+  UpdateNotificationSettingsBody,
   CreateGoalBody,
   FamilyGoal,
   Progress,
@@ -178,6 +182,20 @@ export function createApi(http: HttpClient) {
     startGoal: (familyId: string, body: CreateGoalBody) =>
       http.request<FamilyGoal>("POST", `${f(familyId)}/goal`, body),
     closeGoal: (familyId: string) => http.request<void>("DELETE", `${f(familyId)}/goal`),
+
+    // Notifications: inbox, settings, and this phone's push registration
+    inbox: (familyId: string, cursor?: string) =>
+      http.request<Inbox>("GET", `${f(familyId)}/notifications${query({ cursor })}`),
+    markRead: (familyId: string, ids?: string[]) =>
+      http.request<void>("POST", `${f(familyId)}/notifications/read`, ids ? { ids } : {}),
+    notificationSettings: (familyId: string) =>
+      http.request<NotificationSettings>("GET", `${f(familyId)}/notification-settings`),
+    updateNotificationSettings: (familyId: string, body: UpdateNotificationSettingsBody) =>
+      http.request<NotificationSettings>("PATCH", `${f(familyId)}/notification-settings`, body),
+    registerDevice: (body: RegisterDeviceBody) =>
+      http.request<void>("POST", "/v1/me/devices", body),
+    unregisterDevice: (token: string) =>
+      http.request<void>("DELETE", `/v1/me/devices/${encodeURIComponent(token)}`),
 
     // Job board: open jobs the viewer can claim (claim/release go through `act`)
     jobBoard: (familyId: string) => http.request<JobBoard>("GET", `${f(familyId)}/job-board`),

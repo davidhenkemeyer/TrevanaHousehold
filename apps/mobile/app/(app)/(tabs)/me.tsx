@@ -9,6 +9,8 @@ import { Modal, Switch, View } from "react-native";
 import { PinPad } from "../../../src/components/PinPad";
 import { Screen, errorMessage } from "../../../src/components/Screen";
 import { AppText, Avatar, Button, Card, ErrorText } from "../../../src/components/ui";
+import { unregisterPush } from "../../../src/features/notifications/push";
+import { useUnreadCount } from "../../../src/features/notifications/usePush";
 import { useApi, useDeviceMode, useFamily, useSession } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
 
@@ -21,6 +23,7 @@ export default function Me() {
   const { deviceMode, setDeviceMode } = useDeviceMode();
   const [choosingPin, setChoosingPin] = useState(false);
   const isParent = role === "PARENT";
+  const unread = useUnreadCount();
 
   const savePin = useMutation({
     mutationFn: (pin: string) => api.updateMember(familyId!, membershipId!, { pin }),
@@ -85,9 +88,23 @@ export default function Me() {
         </Card>
       )}
 
-      <Button title="My rewards" variant="secondary" onPress={() => router.push("/rewards")} />
+      <Button
+        title={unread > 0 ? `Notifications (${unread} new)` : "Notifications"}
+        variant="secondary"
+        onPress={() => router.push("/notifications")}
+      />
+      <Button title="My progress" variant="secondary" onPress={() => router.push("/rewards")} />
       <Button title="Switch person" variant="secondary" onPress={() => router.push("/who")} />
-      <Button title="Sign out" variant="ghost" onPress={() => void signOut()} />
+      <Button
+        title="Sign out"
+        variant="ghost"
+        onPress={() =>
+          // Stop pushes to this phone first, while still signed in.
+          void unregisterPush(api)
+            .catch(() => undefined)
+            .finally(() => void signOut())
+        }
+      />
 
       <Modal
         visible={choosingPin}

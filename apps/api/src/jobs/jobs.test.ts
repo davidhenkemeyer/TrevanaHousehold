@@ -134,6 +134,7 @@ describe("background jobs", () => {
         {
           db: t.db,
           storage: t.storage,
+          push: t.push,
           now: () => clock,
           config: { databaseUrl: testDatabaseUrl(), photoRetentionDays: 90 },
         },
@@ -147,6 +148,8 @@ describe("background jobs", () => {
             [JOBS.markLate.name, JOBS.markLate.cron],
             [JOBS.planFamilies.name, JOBS.planFamilies.cron],
             [JOBS.cleanUpPhotos.name, JOBS.cleanUpPhotos.cron],
+            [JOBS.sendInstant.name, JOBS.sendInstant.cron],
+            [JOBS.sendDigests.name, JOBS.sendDigests.cron],
           ].sort(),
         );
       } finally {

@@ -33,6 +33,7 @@ model User {
   memberships   Membership[]
   refreshTokens RefreshToken[]
   invitesSent   Invite[]       @relation("InviteCreatedBy")
+  pushDevices   PushDevice[]
 }
 
 model Family {
@@ -49,16 +50,17 @@ model Family {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  memberships Membership[]
-  invites     Invite[]
-  chores      Chore[]
-  instances   ChoreInstance[]
-  uploads     Upload[]
-  ledger      LedgerEntry[]
-  rewardItems RewardItem[]
-  redemptions Redemption[]
-  xpEntries   XpEntry[]
-  goals       FamilyGoal[]
+  memberships   Membership[]
+  invites       Invite[]
+  chores        Chore[]
+  instances     ChoreInstance[]
+  uploads       Upload[]
+  ledger        LedgerEntry[]
+  rewardItems   RewardItem[]
+  redemptions   Redemption[]
+  xpEntries     XpEntry[]
+  goals         FamilyGoal[]
+  notifications Notification[]
 }
 
 /// A user's place in a family: their role and capacity there. (Reward
@@ -70,6 +72,10 @@ model Membership {
   role              Role
   /// Minutes of chore time per weekday: { sun, mon, ..., sat }.
   capacity          Json
+  /// Notification choices (digest time, quiet hours, per-kind delivery); null = defaults.
+  notificationPrefs Json?
+  /// Local date of the last daily digest, so it goes once a day.
+  lastDigestOn      DateTime? @db.Date
   /// Kid profiles only: PIN asked when a sibling switches to this profile.
   pinHash           String?
   pinFailedAttempts Int       @default(0)
@@ -97,6 +103,7 @@ model Membership {
   redemptionsDecided Redemption[]       @relation("RedemptionDecidedBy")
   xpEntries          XpEntry[]
   badges             MemberBadge[]
+  notifications      Notification[]
 
   @@unique([familyId, userId])
   @@index([userId])
@@ -562,4 +569,44 @@ model FamilyGoal {
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@index([familyId, closedAt])
+}
+
+/// Something that happened, for one person. Every notification is in the
+/// in-app inbox; push delivery (instant or in the daily digest) is on top.
+model Notification {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  familyId     String    @db.Uuid
+  membershipId String    @db.Uuid
+  /// See packages/domain/src/notifications.ts.
+  type         String
+  title        String
+  body         String
+  /// What to open when tapped: { instanceId } or { redemptionId }.
+  data         Json?
+  createdAt    DateTime
+  readAt       DateTime?
+  /// Sent as its own push.
+  pushedAt     DateTime?
+  /// Included in a daily digest.
+  digestedAt   DateTime?
+
+  family     Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, createdAt])
+  @@index([pushedAt, digestedAt])
+}
+
+/// A phone that receives push notifications for a user (Expo push token).
+/// Shared family devices don't register.
+model PushDevice {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  userId        String   @db.Uuid
+  expoPushToken String   @unique
+  platform      String
+  lastSeenAt    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

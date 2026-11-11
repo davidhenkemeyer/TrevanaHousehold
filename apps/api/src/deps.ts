@@ -5,6 +5,7 @@
 import type { AppConfig } from "./config.js";
 import type { Db } from "./db.js";
 import type { AccessTokenService } from "./lib/accessTokens.js";
+import type { PushSender } from "./lib/push/types.js";
 import type { PhotoStorage } from "./lib/storage/types.js";
 
 export interface Deps {
@@ -12,6 +13,8 @@ export interface Deps {
   db: Db;
   accessTokens: AccessTokenService;
   storage: PhotoStorage;
+  /** Push delivery; used only by background jobs. */
+  push: PushSender;
   /** The current time. Never call `new Date()` in services; use this. */
   now: () => Date;
 }

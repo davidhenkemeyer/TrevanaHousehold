@@ -14,6 +14,7 @@ import { PgBoss } from "pg-boss";
 import type { AppConfig } from "../config.js";
 import type { Deps } from "../deps.js";
 import { expireOpenJobs, markLateInstances } from "./lateness.js";
+import { sendDigests, sendInstantNotifications } from "./notifications.js";
 import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
 
@@ -24,6 +25,10 @@ export const JOBS = {
   markLate: { name: "mark-late", cron: "*/5 * * * *" },
   /** Daily at 09:15 UTC (the middle of the night in the Americas). */
   cleanUpPhotos: { name: "clean-up-photos", cron: "15 9 * * *" },
+  /** Every minute: instant notifications (outside quiet hours). */
+  sendInstant: { name: "send-instant-notifications", cron: "* * * * *" },
+  /** Every 15 minutes: each person's daily digest, once their local digest time passes. */
+  sendDigests: { name: "send-digests", cron: "*/15 * * * *" },
 } as const;
 
 export interface RunningJobs {
@@ -32,7 +37,7 @@ export interface RunningJobs {
 }
 
 export async function startJobs(
-  deps: Pick<Deps, "db" | "now" | "storage"> & {
+  deps: Pick<Deps, "db" | "now" | "storage" | "push"> & {
     config: Pick<AppConfig, "databaseUrl" | "photoRetentionDays">;
   },
   log: FastifyBaseLogger,
@@ -59,6 +64,12 @@ export async function startJobs(
   });
   await boss.work(JOBS.cleanUpPhotos.name, async () => {
     await cleanUpPhotos(deps, log);
+  });
+  await boss.work(JOBS.sendInstant.name, async () => {
+    await sendInstantNotifications(deps, log);
+  });
+  await boss.work(JOBS.sendDigests.name, async () => {
+    await sendDigests(deps, log);
   });
 
   log.info({ jobs: Object.values(JOBS).map((j) => j.name) }, "Background jobs started");

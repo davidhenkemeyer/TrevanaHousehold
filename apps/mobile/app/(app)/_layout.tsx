@@ -8,6 +8,7 @@ import { Redirect, Stack, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { SHARED_DEVICE_IDLE_MS } from "../../src/config";
+import { usePushRegistration } from "../../src/features/notifications/usePush";
 import { useDeviceMode, useMe, useSession } from "../../src/state/AppProvider";
 import { colors } from "../../src/theme";
 
@@ -18,6 +19,7 @@ export default function AppLayout() {
   const pathname = usePathname();
   const router = useRouter();
   const lastActive = useRef(Date.now());
+  usePushRegistration();
 
   // Shared devices: back to the picker after inactivity or when reopened.
   useEffect(() => {

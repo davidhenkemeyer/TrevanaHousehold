@@ -159,6 +159,7 @@ async function decide(
     instanceId: submission.instanceId,
     action: REVIEW_DECISION_ACTION[body.action],
     actor: parent,
+    note: body.note ?? null,
     now,
   });
   const review = await tx.review.create({

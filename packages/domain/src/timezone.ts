@@ -126,6 +126,14 @@ export function instantToPlainDate(instant: Date, timeZone: string): PlainDate {
   return plainDateFromParts(w.year, w.month, w.day);
 }
 
+/** The local wall-clock time in `timeZone` at the given instant, as "HH:MM". */
+export function instantToPlainTime(instant: Date, timeZone: string): PlainTime {
+  const w = wallClockAt(instant.getTime(), timeZone);
+  // Some Intl versions report midnight as hour 24.
+  const hour = w.hour === 24 ? 0 : w.hour;
+  return `${String(hour).padStart(2, "0")}:${String(w.minute).padStart(2, "0")}`;
+}
+
 /** Adds whole minutes to an instant (absolute time, not wall-clock time). */
 export function addMinutes(instant: Date, minutes: number): Date {
   return new Date(instant.getTime() + minutes * MS_PER_MINUTE);

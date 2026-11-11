@@ -43,6 +43,7 @@ export async function markLateInstances(
         isLate: true,
         dueAt: true,
         assignees: { select: { membershipId: true } },
+        chore: { select: { name: true } },
       },
     });
     if (batch.length === 0) break;
@@ -67,9 +68,10 @@ export async function markLateInstances(
             createdAt: now,
           },
         });
-        await onMarkedLate(tx, {
+        await onMarkedLate(tx, now, {
           id: instance.id,
           familyId: instance.familyId,
+          choreName: instance.chore.name,
           assigneeIds: instance.assignees.map((a) => a.membershipId),
         });
         return true;

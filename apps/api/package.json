@@ -18,7 +18,9 @@
     "worker": "node --env-file-if-exists=.env dist/worker.js",
     "job:plan": "tsx --env-file-if-exists=.env src/jobs/run-once.ts plan",
     "job:mark-late": "tsx --env-file-if-exists=.env src/jobs/run-once.ts mark-late",
-    "job:cleanup-photos": "tsx --env-file-if-exists=.env src/jobs/run-once.ts cleanup-photos"
+    "job:cleanup-photos": "tsx --env-file-if-exists=.env src/jobs/run-once.ts cleanup-photos",
+    "job:send-instant": "tsx --env-file-if-exists=.env src/jobs/run-once.ts send-instant",
+    "job:send-digests": "tsx --env-file-if-exists=.env src/jobs/run-once.ts send-digests"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1165.0",
@@ -31,6 +33,7 @@
     "@prisma/client": "7.10.1",
     "@titan/contracts": "workspace:*",
     "@titan/domain": "workspace:*",
+    "expo-server-sdk": "8.0.0",
     "fastify": "5.12.8",
     "fastify-type-provider-zod": "7.0.0",
     "jose": "6.2.15",

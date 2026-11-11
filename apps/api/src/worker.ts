@@ -7,13 +7,20 @@ import pino from "pino";
 import { loadConfig } from "./config.js";
 import { createDb } from "./db.js";
 import { startJobs } from "./jobs/index.js";
+import { createExpoPush } from "./lib/push/expo.js";
 import { createS3Storage } from "./lib/storage/s3.js";
 
 const config = loadConfig();
 const log = pino({ level: config.logLevel });
 const db = createDb(config.databaseUrl);
 const jobs = await startJobs(
-  { config, db, storage: createS3Storage(config.storage), now: () => new Date() },
+  {
+    config,
+    db,
+    storage: createS3Storage(config.storage),
+    push: createExpoPush(config.expoAccessToken),
+    now: () => new Date(),
+  },
   log,
 );
 

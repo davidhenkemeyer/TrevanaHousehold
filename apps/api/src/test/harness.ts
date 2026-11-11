@@ -19,6 +19,7 @@ import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";
 import { type AppConfig, loadConfig } from "../config.js";
 import { type Db, createDb } from "../db.js";
+import { type FakePush, createFakePush } from "./fakePush.js";
 import { type FakeStorage, createFakeStorage } from "./fakeStorage.js";
 import { testDatabaseUrl } from "./testDatabase.js";
 
@@ -34,6 +35,8 @@ export interface TestApp {
   db: Db;
   /** In-memory photo storage (reset before each test). */
   storage: FakeStorage;
+  /** In-memory push sender: what jobs would have sent (reset before each test). */
+  push: FakePush;
   /** Moves the app's clock forward. */
   advance(ms: number): void;
   request(
@@ -104,6 +107,7 @@ export function useTestApp(): TestApp {
   let now = T0;
   let emailCounter = 0;
   const storage = createFakeStorage();
+  const push = createFakePush();
 
   beforeAll(async () => {
     const config: AppConfig = {
@@ -115,7 +119,7 @@ export function useTestApp(): TestApp {
       rateLimitEnabled: false,
     };
     db = createDb(config.databaseUrl);
-    app = await buildApp({ config, db, now: () => now, storage });
+    app = await buildApp({ config, db, now: () => now, storage, push });
     await app.ready();
   });
 
@@ -123,6 +127,8 @@ export function useTestApp(): TestApp {
     now = T0;
     storage.objects.clear();
     storage.deleted.length = 0;
+    push.sent.length = 0;
+    push.dead.clear();
     await truncateAll(db);
   });
 
@@ -139,6 +145,7 @@ export function useTestApp(): TestApp {
       return db;
     },
     storage,
+    push,
     advance(ms) {
       now = new Date(now.getTime() + ms);
     },

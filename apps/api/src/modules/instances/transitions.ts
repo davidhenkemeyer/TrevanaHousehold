@@ -30,6 +30,7 @@ import {
 } from "@titan/domain";
 import { AppError, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
+import { onTransition } from "../notifications/hooks.js";
 import { onApproved } from "../rewards/hooks.js";
 import { inPool } from "./views.js";
 
@@ -48,6 +49,8 @@ export interface TransitionInput {
   action: ChoreAction;
   actor: Membership;
   hasPhoto?: boolean;
+  /** A parent's note (rework, reject), passed on to the notification. */
+  note?: string | null | undefined;
   now: Date;
 }
 
@@ -63,6 +66,7 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
     include: {
       chore: {
         select: {
+          name: true,
           requiresPhoto: true,
           reviewPolicy: true,
           xpOverride: true,
@@ -136,6 +140,13 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
     });
   }
 
+  const assigneeIds =
+    result.board === "CLAIMED"
+      ? [input.actor.id]
+      : result.board === "OPEN"
+        ? []
+        : instance.assignees.map((a) => a.membershipId);
+
   if (result.releaseRewards) {
     await onApproved(tx, input.now, {
       id: instance.id,
@@ -143,9 +154,20 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
       rewardAmount: instance.rewardAmount,
       effortMinutes: instance.effortMinutes,
       xp: xpFor(instance.effortMinutes, instance.chore.xpOverride),
-      assigneeIds: instance.assignees.map((a) => a.membershipId),
+      assigneeIds,
     });
   }
+
+  await onTransition(tx, input.now, {
+    instanceId: instance.id,
+    familyId: instance.familyId,
+    choreName: instance.chore.name,
+    action: input.action,
+    toStatus: result.status,
+    actorId: input.actor.id,
+    assigneeIds,
+    note: input.note,
+  });
 
   return {
     fromStatus: instance.status,

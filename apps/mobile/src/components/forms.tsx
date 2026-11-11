@@ -69,6 +69,8 @@ export function SelectChip({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      // Also as an ARIA attribute: the web drops accessibilityState.selected on buttons.
+      aria-selected={selected}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       style={({ pressed }) => [
@@ -127,6 +129,8 @@ export function Segmented<T extends string>({
             key={o.value}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            // Also as an ARIA attribute: the web drops accessibilityState.selected on buttons.
+            aria-selected={selected}
             onPress={() => onChange(o.value)}
             style={[styles.segment, selected && styles.segmentSelected]}
           >

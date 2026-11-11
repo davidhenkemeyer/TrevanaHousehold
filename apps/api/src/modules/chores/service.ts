@@ -15,6 +15,7 @@ import type { Prisma } from "../../generated/prisma/client.js";
 import { requireMember, requireParent } from "../access.js";
 import { familyToday, planFamily, removeUntouchedFuture } from "../instances/generate.js";
 import { type SignPhoto, photoSigner } from "../instances/views.js";
+import { displayNameOf, notify } from "../notifications/service.js";
 import { checkUploads, claimUploads } from "../uploads/service.js";
 
 type Tx = Prisma.TransactionClient;
@@ -136,6 +137,16 @@ export async function createChore(
       include: choreInclude,
     });
     await planFamily(tx, familyId, deps.now());
+    // Its owners hear about a new chore once, not every day it comes up.
+    if (body.assignMode === "FIXED") {
+      await notify(tx, deps.now(), {
+        familyId,
+        to: body.eligibleMembershipIds,
+        exclude: parent.id,
+        type: "NEW_CHORE",
+        details: { choreName: body.name, actorName: await displayNameOf(tx, parent.id) },
+      });
+    }
     return toChoreDto(chore, photoSigner(deps));
   });
 }

@@ -25,6 +25,8 @@ const envSchema = z.object({
   S3_REGION: z.string().default("us-east-1"),
   S3_ACCESS_KEY: z.string().default("chores"),
   S3_SECRET_KEY: z.string().default("chores-dev-secret"),
+  // Optional: Expo's push security token, if "enhanced push security" is on for the project.
+  EXPO_ACCESS_TOKEN: z.string().optional(),
 });
 
 export interface StorageConfig {
@@ -57,6 +59,7 @@ export interface AppConfig {
   refreshTokenTtlDays: number;
   inviteTtlDays: number;
   storage: StorageConfig;
+  expoAccessToken?: string;
   /** Proof photos are deleted this many days after the submission was reviewed. */
   photoRetentionDays: number;
 }
@@ -131,5 +134,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       corsOrigins,
     },
     photoRetentionDays: 90,
+    ...(e.EXPO_ACCESS_TOKEN && { expoAccessToken: e.EXPO_ACCESS_TOKEN }),
   };
 }

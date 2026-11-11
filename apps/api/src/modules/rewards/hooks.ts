@@ -9,11 +9,14 @@
  *   3. badges: any the assignees have newly earned (never removed);
  *   4. the family goal: marked reached when everyone's XP crosses its target.
  *
+ * New badges and a reached goal also create notifications.
+ *
  * Unique constraints plus `skipDuplicates` make every step safe to repeat.
  * XP and badges are recorded even when the family hides them.
  */
 import { earnedBadges, earnings, goalProgress } from "@titan/domain";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { everyoneIn, notify } from "../notifications/service.js";
 import { memberHistory } from "../progress/history.js";
 
 export interface ApprovedInstance {
@@ -74,7 +77,12 @@ export async function onApproved(
   // 3. Badges.
   for (const membershipId of instance.assigneeIds) {
     const history = await memberHistory(tx, membershipId, family.timeZone, now);
-    const badges = earnedBadges(history.badges);
+    const already = await tx.memberBadge.findMany({
+      where: { membershipId },
+      select: { key: true },
+    });
+    const known = new Set(already.map((b) => b.key));
+    const badges = earnedBadges(history.badges).filter((b) => !known.has(b.key));
     if (badges.length === 0) continue;
     await tx.memberBadge.createMany({
       data: badges.map((b) => ({
@@ -86,6 +94,14 @@ export async function onApproved(
       })),
       skipDuplicates: true,
     });
+    for (const badge of badges) {
+      await notify(tx, now, {
+        familyId: instance.familyId,
+        to: [membershipId],
+        type: "BADGE_EARNED",
+        details: { badgeLabel: badge.label },
+      });
+    }
   }
 
   // 4. The family goal.
@@ -99,6 +115,12 @@ export async function onApproved(
     });
     if (goalProgress(total._sum.amount ?? 0, goal.targetXp).reached) {
       await tx.familyGoal.update({ where: { id: goal.id }, data: { reachedAt: now } });
+      await notify(tx, now, {
+        familyId: instance.familyId,
+        to: await everyoneIn(tx, instance.familyId),
+        type: "GOAL_REACHED",
+        details: { goalName: goal.name },
+      });
     }
   }
 }

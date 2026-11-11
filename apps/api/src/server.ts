@@ -6,6 +6,7 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { createDb } from "./db.js";
 import { type RunningJobs, startJobs } from "./jobs/index.js";
+import { createExpoPush } from "./lib/push/expo.js";
 import { createS3Storage } from "./lib/storage/s3.js";
 
 const config = loadConfig();
@@ -35,7 +36,10 @@ try {
       );
   }
   if (config.runJobs) {
-    jobs = await startJobs({ config, db, storage, now: () => new Date() }, app.log);
+    jobs = await startJobs(
+      { config, db, storage, push: createExpoPush(config.expoAccessToken), now: () => new Date() },
+      app.log,
+    );
   }
   await app.listen({ port: config.port, host: config.host });
 } catch (error) {
