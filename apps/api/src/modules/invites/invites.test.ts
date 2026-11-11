@@ -127,7 +127,18 @@ describe("invites", () => {
     const { membershipId } = (
       await accept(dad, (await invite(mom, familyId, "dad@example.com")).token)
     ).json();
-    await t.db.membership.update({ where: { id: membershipId }, data: { pointsBalance: 42 } });
+    // Their rewards live in the ledger, tied to the membership.
+    await t.db.ledgerEntry.create({
+      data: {
+        familyId,
+        membershipId,
+        currency: "POINTS",
+        amount: 42,
+        type: "CORRECTION",
+        note: "Starting points",
+        createdAt: new Date(),
+      },
+    });
     expect(
       (
         await t.request("DELETE", `/v1/families/${familyId}/members/${membershipId}`, {
@@ -139,6 +150,11 @@ describe("invites", () => {
     const rejoin = await accept(dad, (await invite(mom, familyId, "dad@example.com")).token);
     expect(rejoin.json().membershipId).toBe(membershipId);
     const row = await t.db.membership.findUniqueOrThrow({ where: { id: membershipId } });
-    expect(row).toMatchObject({ active: true, pointsBalance: 42 });
+    expect(row).toMatchObject({ active: true });
+    const points = await t.db.ledgerEntry.aggregate({
+      where: { membershipId },
+      _sum: { amount: true },
+    });
+    expect(points._sum.amount).toBe(42);
   });
 });

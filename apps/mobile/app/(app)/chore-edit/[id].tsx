@@ -59,6 +59,8 @@ import {
   readyUploadIds,
 } from "../../../src/features/photos/PhotoPicker";
 import { PhotoThumb } from "../../../src/features/photos/PhotoViews";
+import { amountInputValue, parseAmountInput } from "../../../src/features/rewards/format";
+import { invalidateRewards, useRewards } from "../../../src/features/rewards/useRewards";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
 
@@ -95,6 +97,7 @@ const ASSIGN_HINT = {
   ROTATE:
     "The next person takes it each time, in the order you pick them. Pick nobody for everyone.",
   AUTO: "Goes to whoever has the most free time that day. Pick nobody for everyone.",
+  OPEN: "Goes on the job board; whoever claims it first does it. Pick who may claim it, or nobody for everyone.",
 } as const;
 const REVIEW_HINT = {
   REVIEW_EACH: "You look at every one. Good for chores that earn a reward.",
@@ -114,6 +117,10 @@ export default function ChoreEditor() {
   const { familyId, family } = useFamily();
   const timeZone = family.data?.family.timeZone;
   const members = family.data?.members ?? [];
+  const rewards = useRewards();
+  // The currency a reward can be typed in; null while rewards are off.
+  const coin =
+    rewards.currency === "MONEY" || rewards.currency === "POINTS" ? rewards.currency : null;
 
   const existing = useQuery({
     queryKey: ["chores", familyId, "one", id],
@@ -127,18 +134,26 @@ export default function ChoreEditor() {
   // Reference photo: a newly picked one (uploads right away), or removal of the current one.
   const [newReference, setNewReference] = useState<PickedItem[]>([]);
   const [removeReference, setRemoveReference] = useState(false);
+  // The reward as typed ("2.50" or "50"), and whether a routine is paid on purpose.
+  const [rewardText, setRewardText] = useState("");
+  const [payRoutine, setPayRoutine] = useState(false);
 
   // Fill the form once: a blank chore starting today, or the loaded chore.
   useEffect(() => {
-    if (form !== null) return;
-    if (isNew && timeZone) setForm(newChoreForm(instantToPlainDate(new Date(), timeZone)));
-    if (!isNew && existing.data) setForm(formFromChore(existing.data));
-  }, [form, isNew, timeZone, existing.data]);
+    if (form !== null || !timeZone) return;
+    if (isNew) setForm(newChoreForm(instantToPlainDate(new Date(), timeZone)));
+    if (!isNew && existing.data) {
+      setForm(formFromChore(existing.data));
+      setPayRoutine(existing.data.rewardAmount > 0);
+      if (coin) setRewardText(amountInputValue(coin, existing.data.rewardAmount));
+    }
+  }, [form, isNew, timeZone, existing.data, coin]);
 
   const done = () => {
     for (const key of ["chores", "agenda", "weekLoad", "instance"]) {
       void queryClient.invalidateQueries({ queryKey: [key, familyId] });
     }
+    invalidateRewards(queryClient, familyId);
     router.back();
   };
 
@@ -192,21 +207,52 @@ export default function ChoreEditor() {
   const referenceUploadId = readyUploadIds(newReference)[0];
   const referenceUploading = isUploading(newReference);
   const currentReference = removeReference ? null : (existing.data?.referencePhotoUrl ?? null);
+  // Routines aren't paid unless a parent chooses to; extra jobs are.
+  const pays = coin !== null && (form.kind === "EXTRA_JOB" || payRoutine);
+  const typedReward =
+    coin === null
+      ? form.rewardAmount
+      : rewardText.trim() === ""
+        ? 0
+        : parseAmountInput(coin, rewardText);
+  const rewardError =
+    pays && typedReward === null
+      ? coin === "MONEY"
+        ? "Enter an amount, like 5 or 2.50."
+        : "Enter whole points, like 50."
+      : undefined;
   const onSave = () => {
     setShowErrors(true);
-    if (hasErrors || referenceUploading) return;
+    if (hasErrors || referenceUploading || rewardError !== undefined) return;
+    // With rewards off, whatever reward the chore already had is left alone.
+    const rewardAmount = coin === null ? form.rewardAmount : pays ? (typedReward ?? 0) : 0;
     const referencePhoto: ChoreForm["referencePhoto"] =
       referenceUploadId !== undefined
         ? { kind: "new", uploadId: referenceUploadId }
         : removeReference
           ? { kind: "remove" }
           : { kind: "unchanged" };
-    save.mutate({ f: { ...form, referencePhoto }, original: existing.data });
+    save.mutate({ f: { ...form, rewardAmount, referencePhoto }, original: existing.data });
   };
 
   return (
     <Screen header={header}>
-      <Section title="What">
+      <Section
+        title="What"
+        hint={
+          form.kind === "ROUTINE"
+            ? "A routine is part of everyday family life: making beds, clearing the table."
+            : "An extra job is optional work someone can take on to earn a reward."
+        }
+      >
+        <ChoiceChips
+          options={[
+            { value: "ROUTINE", label: "Routine" },
+            { value: "EXTRA_JOB", label: "Extra job" },
+          ]}
+          value={form.kind}
+          onChange={(kind) => update({ kind })}
+        />
         <TextField
           label="Name"
           value={form.name}
@@ -392,6 +438,7 @@ export default function ChoreEditor() {
             { value: "AUTO", label: "Balance by time" },
             { value: "ROTATE", label: "Take turns" },
             { value: "FIXED", label: "Always the same" },
+            { value: "OPEN", label: "Job board" },
           ]}
           value={form.assignMode}
           onChange={(assignMode) => update({ assignMode })}
@@ -451,21 +498,46 @@ export default function ChoreEditor() {
           value={form.requiresPhoto}
           onChange={(requiresPhoto) => update({ requiresPhoto })}
         />
-        <TextField
-          label="Reward (optional)"
-          value={form.rewardAmount === 0 ? "" : String(form.rewardAmount)}
-          onChangeText={(text) => {
-            const digits = text.replace(/\D/g, "");
-            update({ rewardAmount: digits === "" ? 0 : Math.min(Number(digits), 1_000_000) });
-          }}
-          placeholder="0"
-          keyboardType="number-pad"
-          inputMode="numeric"
-          error={shown.rewardAmount}
-        />
-        <AppText variant="caption" color={colors.textMuted}>
-          Points or cents, depending on your family's rewards (set up in an upcoming update).
-        </AppText>
+      </Section>
+
+      <Section
+        title="Reward"
+        hint={
+          coin === null
+            ? "Rewards are off for your family. Turn them on in Rewards settings and chores can earn money or points."
+            : form.kind === "EXTRA_JOB"
+              ? "What finishing this job earns, once you've approved it."
+              : "Routines usually aren't paid, so kids do them because they're part of the family, not for the money."
+        }
+      >
+        {coin === null ? (
+          <Button
+            title="Rewards settings"
+            variant="secondary"
+            onPress={() => router.push("/rewards-settings")}
+          />
+        ) : (
+          <>
+            {form.kind === "ROUTINE" && (
+              <ToggleRow
+                label="Also pay for this routine"
+                value={payRoutine}
+                onChange={setPayRoutine}
+              />
+            )}
+            {pays && (
+              <TextField
+                label={coin === "MONEY" ? `Amount (${rewards.currencyCode ?? "USD"})` : "Points"}
+                value={rewardText}
+                onChangeText={setRewardText}
+                placeholder={coin === "MONEY" ? "0.00" : "0"}
+                keyboardType={coin === "MONEY" ? "decimal-pad" : "number-pad"}
+                inputMode={coin === "MONEY" ? "decimal" : "numeric"}
+                error={showErrors ? rewardError : undefined}
+              />
+            )}
+          </>
+        )}
       </Section>
 
       {showErrors && hasErrors && (

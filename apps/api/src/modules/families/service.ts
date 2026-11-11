@@ -86,6 +86,9 @@ export async function updateFamily(
     data: {
       ...(body.name !== undefined && { name: body.name }),
       ...(body.timeZone !== undefined && { timeZone: body.timeZone }),
+      // Switching currency converts nothing: ledger entries keep their own currency.
+      ...(body.rewardCurrency !== undefined && { rewardCurrency: body.rewardCurrency }),
+      ...(body.currencyCode !== undefined && { currencyCode: body.currencyCode }),
     },
   });
   return getFamily(deps, userId, familyId);

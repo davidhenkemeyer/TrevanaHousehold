@@ -12,6 +12,7 @@ import {
   ReviewIcon,
   TodayIcon,
 } from "../../../src/components/icons";
+import { useRedemptionRequests } from "../../../src/features/rewards/RedemptionRequests";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, typography } from "../../../src/theme";
 
@@ -27,7 +28,10 @@ export default function TabsLayout() {
     enabled: familyId !== undefined && isParent,
     refetchInterval: 60_000,
   });
-  const badge = isParent && (waiting.data ?? 0) > 0 ? waiting.data : undefined;
+  // Chores to review plus requests to spend points: everything waiting on a parent.
+  const requests = useRedemptionRequests(isParent).data?.length ?? 0;
+  const count = (waiting.data ?? 0) + requests;
+  const badge = isParent && count > 0 ? count : undefined;
 
   return (
     <Tabs

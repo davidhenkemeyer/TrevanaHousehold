@@ -46,6 +46,8 @@
 - Every swipe gesture has a visible button that does the same thing (mouse, keyboard, screen readers). On the web, ignore taps that end a drag (see `features/review/ReviewCard.tsx`).
 - The API lists CORS methods explicitly (`app.ts`). A new HTTP method needs adding there, or the web app can't call it.
 - **Photos:** clients never send or receive storage keys. They upload with a form from `POST /uploads` and refer to the photo by `uploadId`; responses carry signed URLs, made only in `instances/views.ts` (`photoSigner`) and the chore DTO. Storage is `Deps.storage` (`lib/storage`); tests use the in-memory fake (`t.storage`, `t.uploadPhoto`), so CI needs no storage server. Check uploads (`checkUploads`) outside transactions and claim them (`claimUploads`) inside.
+- **Rewards:** balances are never stored; they're sums over `LedgerEntry`, per member and currency. Entries are only added: chore rewards by `modules/rewards/hooks.ts` (`onApproved`), everything else by `modules/rewards/service.ts`. An amount only goes down through a payout, a redemption, or a correction (which needs a note). Spending points locks the member's row first. The arithmetic and formatting live in `packages/domain/src/rewards.ts`.
+- **Job board:** `OPEN` chores create occurrences with `board: OPEN` and no assignee. `claim` / `release` go through `transition()` like any action; never change `board` or assignees for them anywhere else. Unclaimed jobs expire (`expireOpenInstance`), they don't go late.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
 - Inside a Prisma transaction, run queries one at a time (no `Promise.all` on `tx`): a transaction has one connection. Prisma 7 itself still triggers a `pg` "client.query() while executing" deprecation warning internally; it's harmless on pg 8.
@@ -55,13 +57,14 @@
 ```
 apps/mobile         Expo app (iOS / Android / web), Expo Router
   app/              routes: (auth) sign-in, sign-up, pair; (app) onboarding, who, chore/[id],
-                    chore-edit/[id] ("new" creates); (tabs) Today, Review*, Chores*, Family, Me
+                    chore-edit/[id] ("new" creates), rewards, rewards-settings*;
+                    (tabs) Today, Review*, Chores*, Family, Me
                     (* parents only)
   src/api/          typed HTTP client + one function per endpoint
   src/auth/         session manager (single-flight refresh), token storage
   src/components/   Titan UI building blocks (ui.tsx, forms.tsx, brand.tsx, PinPad, Celebration)
   src/features/     screen logic; the pure parts are unit-tested (today/sections, chores/form,
-                    review/queue, week/week, photos/pins + upload)
+                    review/queue, week/week, photos/pins + upload, rewards/format)
   e2e/              Playwright web smoke test (uses installed Edge)
 packages/tokens     Titan design tokens and per-app themes
 apps/api            Fastify API + background jobs
@@ -69,7 +72,8 @@ apps/api            Fastify API + background jobs
   src/modules/      auth, families (members, kid profile switching), invites,
                     chores, instances (planning, agenda, actions, submissions), reviews,
                     uploads (photo upload forms, attach checks),
-                    rewards and notifications (hooks only until Steps 8 and 10)
+                    rewards (ledger, payouts, catalog, redemptions, job board listing),
+                    notifications (hooks only until Step 10)
   src/lib/storage/  PhotoStorage interface + S3 adapter (s3.test.ts runs against local storage)
   src/jobs/         pg-boss scheduling; planning.ts, lateness.ts, photoCleanup.ts hold the job logic
   src/worker.ts     optional standalone job worker (no HTTP)
@@ -88,9 +92,9 @@ docs/               plan, Titan suite notes
 - `pnpm format` (writes) / `pnpm format:check` (CI)
 - `pnpm db:up` / `pnpm db:down`: start/stop Postgres + photo storage (RustFS; needs Docker Desktop running)
 - `pnpm --filter @titan/api dev`: API on http://localhost:3000 (copy `apps/api/.env.example` to `.env` first)
-- `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`
-- `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222)
-- `pnpm --filter @titan/api job:plan` / `job:mark-late` / `job:cleanup-photos`: run a background job once, now
+- `pnpm --filter @titan/api db:migrate --name <change>`: create + apply a migration after editing `schema.prisma`. It needs an interactive terminal when a change could lose data (e.g. dropping a column). From a script: write the SQL with `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` into a new `prisma/migrations/<timestamp>_<name>/migration.sql`, then `pnpm --filter @titan/api db:deploy`.
+- `pnpm --filter @titan/api db:seed`: demo family (mom@example.com / dad@example.com, password `chores-demo-password`; Billy PIN 1111, Sally PIN 2222), using points, with a small rewards catalog and a "Wash the car" job on the job board
+- `pnpm --filter @titan/api job:plan` / `job:mark-late` (also expires unclaimed job-board jobs) / `job:cleanup-photos`: run a background job once, now
 - `pnpm --filter @titan/api worker`: run jobs in a separate process (then set `RUN_JOBS=false` on the API)
 - `pnpm --filter @titan/mobile start`: Expo dev server (scan the QR code with Expo Go; the phone finds the API on this computer's LAN address). `web` opens it in a browser.
 - `pnpm --filter @titan/mobile export:web` then `pnpm --filter @titan/mobile exec expo serve --port 8081`: static web build

@@ -17,6 +17,8 @@ function item(overrides: Partial<Instance>): Instance {
     dueAt: "2026-11-10T18:00:00.000Z",
     status: "NEW",
     isLate: false,
+    kind: "ROUTINE",
+    board: "NONE",
     priority: "NORMAL",
     effortMinutes: 10,
     rewardAmount: 0,

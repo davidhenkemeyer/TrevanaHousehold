@@ -6,9 +6,10 @@
  *   Parents sign in with mom@example.com / dad@example.com, password "chores-demo-password".
  *   Billy's PIN is 1111, Sally's is 2222.
  */
-import { defaultAvatarColor, defaultWeeklyCapacity } from "@titan/domain";
+import { defaultAvatarColor, defaultWeeklyCapacity, instantToPlainDate } from "@titan/domain";
 import { createDb } from "../src/db.js";
 import { hashSecret } from "../src/lib/secrets.js";
+import { planFamily } from "../src/modules/instances/generate.js";
 
 const DEMO_PASSWORD = "chores-demo-password";
 
@@ -22,8 +23,9 @@ try {
   } else {
     const passwordHash = await hashSecret(DEMO_PASSWORD);
     const family = await db.family.create({
-      data: { name: "The Example Family", timeZone: "America/Chicago" },
+      data: { name: "The Example Family", timeZone: "America/Chicago", rewardCurrency: "POINTS" },
     });
+    let momId = "";
     const people = [
       { displayName: "Mom", email: "mom@example.com", role: "PARENT" as const },
       { displayName: "Dad", email: "dad@example.com", role: "PARENT" as const },
@@ -31,7 +33,7 @@ try {
       { displayName: "Sally", pin: "2222", role: "CHILD" as const },
     ];
     for (const [i, person] of people.entries()) {
-      await db.membership.create({
+      const membership = await db.membership.create({
         data: {
           role: person.role,
           capacity: defaultWeeklyCapacity(person.role),
@@ -46,7 +48,38 @@ try {
           },
         },
       });
+      if (person.displayName === "Mom") momId = membership.id;
     }
+
+    // Rewards: the family uses points, with a small catalog and one job on the job board.
+    await db.rewardItem.createMany({
+      data: [
+        { familyId: family.id, name: "30 minutes of screen time", cost: 50 },
+        { familyId: family.id, name: "Pick tonight's dinner", cost: 100 },
+        { familyId: family.id, name: "Stay up 30 minutes later", cost: 150 },
+      ],
+    });
+    const now = new Date();
+    await db.chore.create({
+      data: {
+        familyId: family.id,
+        createdById: momId,
+        name: "Wash the car",
+        kind: "EXTRA_JOB",
+        effortMinutes: 45,
+        rewardAmount: 100,
+        recurrence: { freq: "WEEKLY", startDate: instantToPlainDate(now, family.timeZone) },
+        deadlineMinutes: 3 * 24 * 60,
+        assignMode: "OPEN",
+        checklist: {
+          create: ["Rinse", "Soap and scrub", "Rinse again and dry"].map((text, position) => ({
+            text,
+            position,
+          })),
+        },
+      },
+    });
+    await db.$transaction((tx) => planFamily(tx, family.id, now));
     console.log(`Created "${family.name}" (${family.id}) with Mom, Dad, Billy, and Sally.`);
   }
 } finally {

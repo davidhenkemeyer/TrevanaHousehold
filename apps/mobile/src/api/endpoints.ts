@@ -12,7 +12,9 @@ import type {
   CreateChoreBody,
   CreateFamilyBody,
   CreateInviteBody,
+  CorrectionBody,
   CreateInviteResponse,
+  CreateRewardItemBody,
   CreateUploadBody,
   CreateUploadResponse,
   FamilyDetail,
@@ -20,10 +22,20 @@ import type {
   InstanceActionBody,
   InstanceDetail,
   InstanceList,
+  JobBoard,
+  LedgerChangeResponse,
+  LedgerPage,
   LoginBody,
   Member,
   MeResponse,
   PairingCodeResponse,
+  PayoutBody,
+  Redemption,
+  RedemptionDecisionBody,
+  RedemptionList,
+  RewardItem,
+  RewardItemList,
+  RewardsSummary,
   ReviewBody,
   ReviewQueue,
   ReviewResponse,
@@ -32,6 +44,7 @@ import type {
   SubmitResponse,
   Tokens,
   UpdateChoreBody,
+  UpdateFamilyBody,
   UpdateMemberBody,
   WeekLoad,
 } from "@titan/contracts";
@@ -62,6 +75,8 @@ export function createApi(http: HttpClient) {
     createFamily: (body: CreateFamilyBody) =>
       http.request<FamilyDetail>("POST", "/v1/families", body),
     family: (familyId: string) => http.request<FamilyDetail>("GET", f(familyId)),
+    updateFamily: (familyId: string, body: UpdateFamilyBody) =>
+      http.request<FamilyDetail>("PATCH", f(familyId), body),
     createChild: (familyId: string, body: CreateChildBody) =>
       http.request<Member>("POST", `${f(familyId)}/children`, body),
     updateMember: (familyId: string, membershipId: string, body: UpdateMemberBody) =>
@@ -130,6 +145,34 @@ export function createApi(http: HttpClient) {
         `${f(familyId)}/submissions/${submissionId}/review`,
         body,
       ),
+    // Rewards: balances, history, payouts and corrections (parents)
+    rewards: (familyId: string) => http.request<RewardsSummary>("GET", `${f(familyId)}/rewards`),
+    ledger: (familyId: string, params: { memberId?: string; cursor?: string } = {}) =>
+      http.request<LedgerPage>("GET", `${f(familyId)}/rewards/ledger${query(params)}`),
+    payout: (familyId: string, body: PayoutBody) =>
+      http.request<LedgerChangeResponse>("POST", `${f(familyId)}/rewards/payouts`, body),
+    correction: (familyId: string, body: CorrectionBody) =>
+      http.request<LedgerChangeResponse>("POST", `${f(familyId)}/rewards/corrections`, body),
+
+    // The points catalog and requests to spend points
+    rewardItems: (familyId: string) =>
+      http.request<RewardItemList>("GET", `${f(familyId)}/reward-items`),
+    createRewardItem: (familyId: string, body: CreateRewardItemBody) =>
+      http.request<RewardItem>("POST", `${f(familyId)}/reward-items`, body),
+    removeRewardItem: (familyId: string, itemId: string) =>
+      http.request<void>("DELETE", `${f(familyId)}/reward-items/${itemId}`),
+    redemptions: (familyId: string, status?: Redemption["status"]) =>
+      http.request<RedemptionList>("GET", `${f(familyId)}/redemptions${query({ status })}`),
+    requestRedemption: (familyId: string, itemId: string) =>
+      http.request<Redemption>("POST", `${f(familyId)}/redemptions`, { itemId }),
+    decideRedemption: (familyId: string, redemptionId: string, body: RedemptionDecisionBody) =>
+      http.request<Redemption>("POST", `${f(familyId)}/redemptions/${redemptionId}/decision`, body),
+    cancelRedemption: (familyId: string, redemptionId: string) =>
+      http.request<Redemption>("POST", `${f(familyId)}/redemptions/${redemptionId}/cancel`),
+
+    // Job board: open jobs the viewer can claim (claim/release go through `act`)
+    jobBoard: (familyId: string) => http.request<JobBoard>("GET", `${f(familyId)}/job-board`),
+
     // Photos: an upload form for a direct upload to storage (see features/photos/upload.ts).
     createUpload: (familyId: string, body: CreateUploadBody) =>
       http.request<CreateUploadResponse>("POST", `${f(familyId)}/uploads`, body),

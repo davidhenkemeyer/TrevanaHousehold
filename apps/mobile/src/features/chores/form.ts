@@ -16,6 +16,7 @@ import {
 } from "@titan/contracts";
 import {
   type AssignMode,
+  type ChoreKind,
   type Frequency,
   type PlainDate,
   type Priority,
@@ -35,6 +36,8 @@ export type ReferencePhotoChange =
 export type Deadline = { kind: "endOfDay" } | { kind: "minutes"; minutes: number };
 
 export interface ChoreForm {
+  /** Routine (baseline duty) or extra job (optional, earns coins). */
+  kind: ChoreKind;
   name: string;
   description: string;
   cue: string;
@@ -112,6 +115,7 @@ export function describeDuration(minutes: number): string {
 
 export function newChoreForm(today: PlainDate): ChoreForm {
   return {
+    kind: "ROUTINE",
     name: "",
     description: "",
     cue: "",
@@ -141,6 +145,7 @@ export function formFromChore(chore: Chore): ChoreForm {
   const startDate = r.startDate as PlainDate;
   const timeOfDay = r.timeOfDay ?? DEFAULT_TIME_OF_DAY;
   return {
+    kind: chore.kind,
     name: chore.name,
     description: chore.description,
     cue: chore.cue ?? "",
@@ -184,6 +189,7 @@ export function toRecurrence(form: ChoreForm): CreateChoreBody["recurrence"] {
 export function toChoreBody(form: ChoreForm): CreateChoreBody {
   const cue = form.cue.trim();
   return {
+    kind: form.kind,
     name: form.name.trim(),
     description: form.description.trim(),
     cue: cue === "" ? null : cue,
@@ -263,5 +269,7 @@ export function describeAssignment(
       return `Takes turns: ${names.length > 0 ? names.join(", ") : "everyone"}`;
     case "AUTO":
       return `Balanced by capacity (${names.length > 0 ? names.join(", ") : "everyone"})`;
+    case "OPEN":
+      return `Job board (${names.length > 0 ? names.join(", ") : "anyone"} can claim it)`;
   }
 }

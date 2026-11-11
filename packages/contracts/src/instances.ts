@@ -1,5 +1,7 @@
 import {
+  BOARD_STATES,
   CHORE_ACTIONS,
+  CHORE_KINDS,
   CHORE_STATUSES,
   DIRECT_ACTIONS,
   PRIORITIES,
@@ -16,7 +18,7 @@ export const plainDateSchema = z
   .string()
   .refine(isPlainDate, { message: "Expected a real date as YYYY-MM-DD" });
 
-const personSchema = z.object({
+export const personSchema = z.object({
   membershipId: idSchema,
   displayName: z.string(),
   avatarColor: z.string(),
@@ -64,6 +66,9 @@ export const instanceSchema = z.object({
   dueAt: isoDateTimeSchema,
   status: z.enum(CHORE_STATUSES),
   isLate: z.boolean(),
+  kind: z.enum(CHORE_KINDS),
+  /** OPEN: on the job board (no assignee yet). CLAIMED: taken from it. */
+  board: z.enum(BOARD_STATES),
   /** Effective priority: HIGH when late or sent back for rework. */
   priority: z.enum(PRIORITIES),
   effortMinutes: z.int(),

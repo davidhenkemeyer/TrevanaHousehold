@@ -87,6 +87,8 @@ export async function getAgenda(
     where: {
       familyId,
       ...assignedTo(query.memberId),
+      // Unclaimed job-board jobs aren't anyone's chores yet; they're on the job board.
+      board: { not: "OPEN" },
       OR: [{ occurrenceDate: day }, { occurrenceDate: { lt: day }, status: { in: OUTSTANDING } }],
     },
     include: instanceInclude,

@@ -14,6 +14,7 @@ export * from "./status.js";
 export * from "./stateMachine.js";
 export * from "./lateness.js";
 export * from "./points.js";
+export * from "./rewards.js";
 export * from "./assignment.js";
 export * from "./schedule.js";
 export * from "./defaults.js";

@@ -10,18 +10,21 @@ import { colors, spacing } from "../../theme";
 import { pinsOf } from "../photos/pins";
 import { dueLabel } from "./sections";
 
-export type CardAction = "start" | "defer" | "reset" | "complete";
+export type CardAction = "start" | "defer" | "reset" | "complete" | "claim" | "release";
 
 export function ChoreCard({
   item,
   showAssignees,
   busy,
+  rewardText,
   onAction,
   onOpen,
 }: {
   item: Instance;
   showAssignees: boolean;
   busy: boolean;
+  /** The reward in the family's currency ("+$2.00"); omitted when there's none to show. */
+  rewardText?: string | undefined;
   onAction: (action: CardAction) => void;
   onOpen: () => void;
 }) {
@@ -64,7 +67,8 @@ export function ChoreCard({
           {item.status === "IN_PROGRESS" && <Chip label="IN PROGRESS" color={colors.info} />}
           {item.status === "DEFERRED" && <Chip label="LATER" color={colors.textMuted} />}
           {steps > 0 && <Chip label={`${steps} ${steps === 1 ? "STEP" : "STEPS"}`} />}
-          {item.rewardAmount > 0 && <Chip label={`+${item.rewardAmount}`} color={colors.success} />}
+          {item.kind === "EXTRA_JOB" && <Chip label="EXTRA JOB" color={colors.info} />}
+          {rewardText !== undefined && <Chip label={rewardText} color={colors.success} />}
         </View>
       </Pressable>
 
@@ -86,7 +90,15 @@ export function ChoreCard({
         </View>
       )}
 
-      {(can("complete") || can("start") || can("defer") || can("reset")) && (
+      {can("claim") && (
+        <Button
+          title="I'll do it"
+          accessibilityLabel={`Claim ${item.choreName}`}
+          onPress={() => onAction("claim")}
+          loading={busy}
+        />
+      )}
+      {(can("complete") || can("start") || can("defer") || can("reset") || can("release")) && (
         <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
           {can("complete") && (
             <Button
@@ -117,6 +129,15 @@ export function ChoreCard({
               title="Stop"
               variant="ghost"
               onPress={() => onAction("reset")}
+              disabled={busy}
+            />
+          )}
+          {can("release") && (
+            <Button
+              title="Give back"
+              accessibilityLabel={`Give ${item.choreName} back to the job board`}
+              variant="ghost"
+              onPress={() => onAction("release")}
               disabled={busy}
             />
           )}

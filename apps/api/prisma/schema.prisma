@@ -36,21 +36,29 @@ model User {
 }
 
 model Family {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String
+  id             String         @id @default(uuid(7)) @db.Uuid
+  name           String
   /// IANA zone, e.g. "America/Chicago". All scheduling happens in this zone.
-  timeZone  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  timeZone       String
+  /// What chores pay in. Changing it never converts or erases ledger entries.
+  rewardCurrency RewardCurrency @default(NONE)
+  /// ISO code used when rewardCurrency is MONEY (amounts are in cents).
+  currencyCode   String         @default("USD")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   memberships Membership[]
   invites     Invite[]
   chores      Chore[]
   instances   ChoreInstance[]
   uploads     Upload[]
+  ledger      LedgerEntry[]
+  rewardItems RewardItem[]
+  redemptions Redemption[]
 }
 
-/// A user's place in a family: their role, capacity, and points there.
+/// A user's place in a family: their role and capacity there. (Reward
+/// balances aren't stored here; they're sums over LedgerEntry.)
 model Membership {
   id                String    @id @default(uuid(7)) @db.Uuid
   familyId          String    @db.Uuid
@@ -58,7 +66,6 @@ model Membership {
   role              Role
   /// Minutes of chore time per weekday: { sun, mon, ..., sat }.
   capacity          Json
-  pointsBalance     Int       @default(0)
   /// Kid profiles only: PIN asked when a sibling switches to this profile.
   pinHash           String?
   pinFailedAttempts Int       @default(0)
@@ -71,15 +78,19 @@ model Membership {
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  choresCreated  Chore[]            @relation("ChoreCreatedBy")
-  pairingCodes   PairingCode[]      @relation("PairingCodeFor")
-  pairingsMade   PairingCode[]      @relation("PairingCodeCreatedBy")
-  eligibleFor    ChoreEligible[]
-  assignments    InstanceAssignee[]
-  events         InstanceEvent[]
-  submissions    Submission[]
-  reviewsWritten Review[]
-  uploads        Upload[]
+  choresCreated      Chore[]            @relation("ChoreCreatedBy")
+  pairingCodes       PairingCode[]      @relation("PairingCodeFor")
+  pairingsMade       PairingCode[]      @relation("PairingCodeCreatedBy")
+  eligibleFor        ChoreEligible[]
+  assignments        InstanceAssignee[]
+  events             InstanceEvent[]
+  submissions        Submission[]
+  reviewsWritten     Review[]
+  uploads            Upload[]
+  ledger             LedgerEntry[]      @relation("LedgerMember")
+  ledgerWritten      LedgerEntry[]      @relation("LedgerCreatedBy")
+  redemptions        Redemption[]       @relation("RedemptionMember")
+  redemptionsDecided Redemption[]       @relation("RedemptionDecidedBy")
 
   @@unique([familyId, userId])
   @@index([userId])
@@ -167,6 +178,27 @@ enum AssignMode {
   FIXED
   ROTATE
   AUTO
+  /// Job board: nobody is assigned until someone claims the occurrence.
+  OPEN
+}
+
+enum RewardCurrency {
+  NONE
+  MONEY
+  POINTS
+}
+
+/// Routine = baseline duty (no coins by default). Extra job = optional, earns coins.
+enum ChoreKind {
+  ROUTINE
+  EXTRA_JOB
+}
+
+/// NONE: ordinary chore. OPEN: on the job board. CLAIMED: taken from the board.
+enum BoardState {
+  NONE
+  OPEN
+  CLAIMED
 }
 
 enum ReviewPolicy {
@@ -189,6 +221,7 @@ model Chore {
   description       String       @default("")
   /// Situational trigger shown on the card, e.g. "After dinner" (branding doc: implementation intentions).
   cue               String?
+  kind              ChoreKind    @default(ROUTINE)
   effortMinutes     Int
   defaultPriority   Priority     @default(NORMAL)
   requiresPhoto     Boolean      @default(false)
@@ -253,6 +286,8 @@ model ChoreInstance {
   dueAt          DateTime
   status         ChoreStatus @default(NEW)
   isLate         Boolean     @default(false)
+  /// Job board state. Change it only through modules/instances/transitions.ts.
+  board          BoardState  @default(NONE)
   priority       Priority
   /// Snapshots taken at planning time, so later chore edits don't change history.
   rewardAmount   Int
@@ -265,6 +300,7 @@ model ChoreInstance {
   assignees   InstanceAssignee[]
   events      InstanceEvent[]
   submissions Submission[]
+  ledger      LedgerEntry[]
 
   @@unique([choreId, occurrenceDate])
   @@index([familyId, occurrenceDate])
@@ -368,4 +404,101 @@ model Upload {
 
   @@index([familyId])
   @@index([expiresAt])
+}
+
+enum LedgerType {
+  /// A chore was approved.
+  EARNED
+  /// A parent paid money out (negative).
+  PAYOUT
+  /// Points held for a catalog reward (negative).
+  REDEMPTION
+  /// The request was denied or canceled (positive).
+  REDEMPTION_REFUND
+  /// A parent fixed a mistake (either sign; always has a note).
+  CORRECTION
+}
+
+/// One change to a member's rewards. Balances are never stored: a balance is
+/// the sum of a member's entries in a currency. Entries are never edited or
+/// deleted; mistakes are fixed with a CORRECTION entry.
+model LedgerEntry {
+  id           String         @id @default(uuid(7)) @db.Uuid
+  familyId     String         @db.Uuid
+  membershipId String         @db.Uuid
+  /// MONEY or POINTS (never NONE): the currency this entry was made in.
+  currency     RewardCurrency
+  /// For MONEY entries.
+  currencyCode String?
+  /// Signed: cents or points.
+  amount       Int
+  type         LedgerType
+  instanceId   String?        @db.Uuid
+  redemptionId String?        @db.Uuid
+  note         String?
+  /// The parent who recorded it; null for automatic entries.
+  createdById  String?        @db.Uuid
+  createdAt    DateTime
+
+  family     Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  membership Membership     @relation("LedgerMember", fields: [membershipId], references: [id], onDelete: Cascade)
+  createdBy  Membership?    @relation("LedgerCreatedBy", fields: [createdById], references: [id])
+  instance   ChoreInstance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  redemption Redemption?    @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
+
+  /// An approval can never pay the same member twice for one occurrence.
+  @@unique([instanceId, membershipId, type])
+  @@index([familyId, membershipId, currency])
+  @@index([membershipId, createdAt])
+}
+
+/// A non-monetary reward kids can spend points on ("30 min screen time").
+model RewardItem {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  familyId  String   @db.Uuid
+  name      String
+  /// In points.
+  cost      Int
+  /// Removed items are hidden, not deleted, so past requests keep their meaning.
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  family      Family       @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  redemptions Redemption[]
+
+  @@index([familyId])
+}
+
+enum RedemptionStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  CANCELED
+}
+
+/// A request to spend points on a reward. The points are held when it's made
+/// (a REDEMPTION ledger entry) and given back if it's denied or canceled.
+model Redemption {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  familyId     String           @db.Uuid
+  membershipId String           @db.Uuid
+  itemId       String           @db.Uuid
+  /// Snapshots, so later catalog edits don't change what was asked for.
+  itemName     String
+  cost         Int
+  status       RedemptionStatus @default(REQUESTED)
+  decidedById  String?          @db.Uuid
+  decidedAt    DateTime?
+  note         String?
+  createdAt    DateTime
+
+  family     Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  membership Membership    @relation("RedemptionMember", fields: [membershipId], references: [id], onDelete: Cascade)
+  decidedBy  Membership?   @relation("RedemptionDecidedBy", fields: [decidedById], references: [id])
+  item       RewardItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  ledger     LedgerEntry[]
+
+  @@index([familyId, status])
+  @@index([membershipId])
 }

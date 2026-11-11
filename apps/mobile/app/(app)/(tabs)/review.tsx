@@ -30,6 +30,11 @@ import {
 } from "../../../src/features/review/queue";
 import { PhotoViewer } from "../../../src/features/photos/PhotoViews";
 import { ReviewCard } from "../../../src/features/review/ReviewCard";
+import {
+  RedemptionRequests,
+  useRedemptionRequests,
+} from "../../../src/features/rewards/RedemptionRequests";
+import { REWARD_QUERY_KEYS } from "../../../src/features/rewards/useRewards";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
 
@@ -67,11 +72,14 @@ export default function Review() {
   const total = queue.data?.pages[0]?.total ?? 0;
   const eligible = batchEligibleIds(items);
   const kids = (family.data?.members ?? []).filter((m) => m.role === "CHILD");
+  // Requests to spend points also wait on a parent; they're listed first.
+  const requestCount = useRedemptionRequests().data?.length ?? 0;
+  const waiting = total + requestCount;
 
   /** Everything a decision can change: the queue, Today, chore details, the week view. */
   const refreshAll = () =>
     Promise.all(
-      ["reviewQueue", "agenda", "instance", "weekLoad"].map((key) =>
+      ["reviewQueue", "agenda", "instance", "weekLoad", ...REWARD_QUERY_KEYS].map((key) =>
         queryClient.invalidateQueries({ queryKey: [key, familyId] }),
       ),
     );
@@ -137,9 +145,9 @@ export default function Review() {
             </AppText>
             <AppText color={colors.onPrimary}>
               {queue.isSuccess
-                ? total === 0
+                ? waiting === 0
                   ? "Nothing waiting for you."
-                  : `${total} waiting for you`
+                  : `${waiting} waiting for you`
                 : " "}
             </AppText>
           </GradientHeader>
@@ -153,6 +161,8 @@ export default function Review() {
             <AppText accessibilityRole="text">{notice}</AppText>
           </Card>
         )}
+
+        <RedemptionRequests />
 
         {kids.length > 1 && (
           <View style={{ gap: spacing.sm }}>
@@ -186,7 +196,7 @@ export default function Review() {
           />
         )}
 
-        {queue.isSuccess && items.length === 0 && (
+        {queue.isSuccess && items.length === 0 && requestCount === 0 && (
           <Card style={{ alignItems: "center", gap: spacing.sm }}>
             <AppText variant="h2">All caught up!</AppText>
             <AppText color={colors.textMuted} style={{ textAlign: "center" }}>

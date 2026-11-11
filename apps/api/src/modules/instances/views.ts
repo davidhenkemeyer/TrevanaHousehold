@@ -25,7 +25,13 @@ export function photoSigner(deps: Pick<Deps, "storage" | "now">): SignPhoto {
 const memberWithUser = { include: { user: true } } as const;
 
 export const instanceInclude = {
-  chore: { include: { checklist: { orderBy: { position: "asc" } } } },
+  chore: {
+    include: {
+      checklist: { orderBy: { position: "asc" } },
+      // Who may claim it when it's on the job board (empty = everyone).
+      eligible: { select: { membershipId: true } },
+    },
+  },
   assignees: { include: { membership: memberWithUser }, orderBy: { membershipId: "asc" } },
   // Latest submission and its latest review, for "feedback from Mom".
   submissions: {
@@ -102,6 +108,14 @@ export async function toSubmissionDto(
   };
 }
 
+/** A job's pool: the listed members, or everyone when nobody is listed. */
+export function inPool(
+  eligible: readonly { membershipId: string }[],
+  membershipId: string,
+): boolean {
+  return eligible.length === 0 || eligible.some((e) => e.membershipId === membershipId);
+}
+
 export async function toInstanceDto(
   row: InstanceRow,
   viewer: Viewer,
@@ -119,6 +133,8 @@ export async function toInstanceDto(
     dueAt: row.dueAt.toISOString(),
     status: row.status,
     isLate: row.isLate,
+    kind: row.chore.kind,
+    board: row.board,
     priority: effectivePriority(row.priority, row.status, row.isLate),
     effortMinutes: row.effortMinutes,
     rewardAmount: row.rewardAmount,
@@ -136,6 +152,8 @@ export async function toInstanceDto(
       // shows either way; the app asks for the photo first.
       hasPhoto: false,
       reviewPolicy: row.chore.reviewPolicy,
+      board: row.board,
+      actorInPool: inPool(row.chore.eligible, viewer.membershipId),
     }),
     latestReview: latestReview ? toReviewDto(latestReview) : null,
   };

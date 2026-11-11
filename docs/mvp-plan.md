@@ -306,11 +306,25 @@ Adapted rather than copied:
      - **Retention (decided):** proof photos are deleted 90 days after review (`photosExpired` in the history); unused uploads after a day; replaced or removed reference photos too. Daily `clean-up-photos` job; `job:cleanup-photos` runs it by hand.
      - **Local storage:** RustFS replaces MinIO, whose community images are no longer published. In development the API creates the bucket, sets its CORS rule for `CORS_ORIGINS`, and signs URLs with this computer's LAN address so phones on the Wi-Fi can reach storage.
      - **Fixed along the way:** the person-switch endpoint was rate-limited per IP, which a household shares (family iPad plus kids' phones on one Wi-Fi). It's now per signed-in account; PIN guessing is still stopped by the per-profile lockout.
-8. **Rewards**
+8. ✅ **Rewards**
    - Family reward settings (money / points / none). Chore kind (Routine / Extra Job) with the XP-for-routines, coins-for-extra-jobs default.
    - Ledger, balances, and pending amounts. No punitive deductions.
    - Money: payouts. Points: catalog and redemption requests with parent approval.
    - Job Board: `OPEN` extra jobs that kids claim.
+   - **Decisions:**
+     - Redeeming points: the points are held when the request is made and given back if it's denied or canceled.
+     - Unclaimed job-board jobs quietly expire at their deadline (never "late"); recurring ones return on their next date.
+     - Anyone in a job's pool can claim it, parents included (an empty pool means everyone).
+     - Payouts may exceed the balance (an advance): the balance goes negative and later earnings pay it back.
+   - **As built:**
+     - **Ledger:** `LedgerEntry` rows (EARNED, PAYOUT, REDEMPTION, REDEMPTION_REFUND, CORRECTION), each recording its own currency. Balances are sums over the ledger, never stored; `Membership.pointsBalance` was removed (it was never written). Approval writes one EARNED entry per assignee (`onApproved`), split in whole units, and a unique (occurrence, member, type) constraint means an approval can never pay twice. Pending amounts are computed from chores waiting for review.
+     - **Currency** per family: none, money (USD, CAD, EUR, GBP, AUD, NZD; amounts in cents), or points. Switching converts nothing: earlier balances stay on each person's rewards page until a parent settles them.
+     - **Taking amounts back** happens only through a payout, a redemption, or a **correction**, which always needs a note and shows as a correction in the history.
+     - **Points catalog and requests:** parents add rewards with a cost; anyone asks for one; the request appears at the top of the Review tab (and in its badge) with Approve / Not now. Spending locks the member's row first, so two requests at once can't spend the same points.
+     - **Routine vs. extra job:** set in the chore editor. Routines hide the reward behind "Also pay for this routine" (off by default); extra jobs show it. Amounts are typed in the family's currency ("2.50" or "50").
+     - **Job board:** assignment mode `OPEN`. The planner creates the occurrence with no assignee and charges nobody's capacity. `claim` and `release` ("Give back") are state-machine actions that go through `transition()`; the occurrence's `board` state (NONE / OPEN / CLAIMED) is updated with the same guard as status, so of two simultaneous claims exactly one wins (the other gets `ALREADY_CLAIMED`). While a job is on the board, only claim and cancel are possible. The late-marking job also expires unclaimed jobs past their deadline. (The plan called for a boolean `open` column; a three-value `board` state turned out clearer, since "Give back" needs to know a job came from the board.)
+     - **App:** a balance chip on Today opens the rewards screen (balance, pending, catalog, requests, history); parents get everyone's balances there, "Record payout", and "Correction". Today shows a "Job board" section with "I'll do it". Rewards settings live under Family. No new tab.
+     - XP, levels, and badges are Step 9.
 9. **Gamification**
    - On/off setting, XP on approval, levels.
    - Badge rules in `packages/domain` (including mastery badges for chores done without rework), awarded after each approval; streaks with preservers.

@@ -1,5 +1,6 @@
 import {
   ASSIGN_MODES,
+  CHORE_KINDS,
   FREQUENCIES,
   PRIORITIES,
   REVIEW_POLICIES,
@@ -42,6 +43,8 @@ const fields = {
   description: z.string().trim().max(500),
   /** Situational trigger shown on the card, e.g. "After dinner". Null removes it. */
   cue: z.string().trim().min(1).max(60).nullable(),
+  /** Routine (baseline duty) or extra job (optional, earns coins). */
+  kind: z.enum(CHORE_KINDS),
   effortMinutes: z.int().min(1).max(480),
   defaultPriority: z.enum(PRIORITIES),
   requiresPhoto: z.boolean(),
@@ -52,7 +55,10 @@ const fields = {
   /** Due this long after the occurrence becomes available. Max 90 days. */
   deadlineMinutes: z.int().min(1).max(MAX_DEADLINE_MINUTES),
   assignMode: z.enum(ASSIGN_MODES),
-  /** FIXED: owners. ROTATE/AUTO: candidate pool in rotation order (empty = everyone). */
+  /**
+   * FIXED: owners. ROTATE/AUTO: candidate pool in rotation order (empty = everyone).
+   * OPEN (job board): who may claim it (empty = everyone).
+   */
   eligibleMembershipIds: z
     .array(idSchema)
     .max(20)
@@ -66,6 +72,7 @@ export const createChoreBodySchema = z
     name: fields.name,
     description: fields.description.default(""),
     cue: fields.cue.default(null),
+    kind: fields.kind.default("ROUTINE"),
     effortMinutes: fields.effortMinutes,
     defaultPriority: fields.defaultPriority.default("NORMAL"),
     requiresPhoto: fields.requiresPhoto.default(false),
@@ -89,6 +96,7 @@ export const updateChoreBodySchema = z.strictObject({
   name: fields.name.optional(),
   description: fields.description.optional(),
   cue: fields.cue.optional(),
+  kind: fields.kind.optional(),
   effortMinutes: fields.effortMinutes.optional(),
   defaultPriority: fields.defaultPriority.optional(),
   requiresPhoto: fields.requiresPhoto.optional(),
@@ -112,6 +120,7 @@ export const choreSchema = z.object({
   name: z.string(),
   description: z.string(),
   cue: z.string().nullable(),
+  kind: z.enum(CHORE_KINDS),
   effortMinutes: z.int(),
   defaultPriority: z.enum(PRIORITIES),
   requiresPhoto: z.boolean(),

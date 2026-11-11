@@ -1,6 +1,7 @@
 /**
  * Late detection and effective priority.
  */
+import type { BoardState } from "./stateMachine.js";
 import type { ChoreStatus, Priority } from "./status.js";
 import { LATE_ELIGIBLE_STATUSES } from "./status.js";
 
@@ -8,6 +9,8 @@ export interface LatenessInput {
   status: ChoreStatus;
   isLate: boolean;
   dueAt: Date;
+  /** Default "NONE". Unclaimed job-board jobs are never late: they expire instead. */
+  board?: BoardState;
 }
 
 /**
@@ -18,7 +21,24 @@ export interface LatenessInput {
 export function shouldMarkLate(instance: LatenessInput, now: Date): boolean {
   return (
     !instance.isLate &&
+    instance.board !== "OPEN" &&
     LATE_ELIGIBLE_STATUSES.has(instance.status) &&
+    now.getTime() > instance.dueAt.getTime()
+  );
+}
+
+/**
+ * True if an unclaimed job-board job should quietly leave the board now:
+ * nobody took it before its deadline. Nobody is flagged late for it; a
+ * recurring job simply comes back on its next date.
+ */
+export function shouldExpireOpen(
+  instance: { status: ChoreStatus; board: BoardState; dueAt: Date },
+  now: Date,
+): boolean {
+  return (
+    instance.board === "OPEN" &&
+    instance.status === "NEW" &&
     now.getTime() > instance.dueAt.getTime()
   );
 }

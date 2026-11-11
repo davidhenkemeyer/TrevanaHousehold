@@ -11,6 +11,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { Animated, PanResponder, Pressable, StyleSheet, View } from "react-native";
 import { AppText, Avatar, Button, Card, Chip } from "../../components/ui";
 import { PhotoThumb } from "../photos/PhotoViews";
+import { rewardLabel } from "../rewards/format";
+import { useRewards } from "../rewards/useRewards";
 import { colors, radii, spacing } from "../../theme";
 
 /** How far (px) a drag must go to count as a swipe. */
@@ -34,6 +36,7 @@ export function ReviewCard({
   onOpen: () => void;
   onViewPhoto: (url: string, title: string) => void;
 }) {
+  const { format } = useRewards();
   const x = useRef(new Animated.Value(0)).current;
   // Latest callbacks, so the responder (created once) never calls stale ones.
   const handlers = useRef({ onApprove, onNeedsWork, busy });
@@ -127,7 +130,9 @@ export function ReviewCard({
               />
             )}
             {instance.isLate && <Chip label="LATE" color={colors.attention} filled />}
-            {instance.rewardAmount > 0 && <Chip label={`REWARD ${instance.rewardAmount}`} />}
+            {format && instance.rewardAmount > 0 && (
+              <Chip label={rewardLabel(format, instance.rewardAmount)} color={colors.success} />
+            )}
             {!item.batchEligible && <Chip label="REVIEW EACH" color={colors.info} />}
           </View>
 

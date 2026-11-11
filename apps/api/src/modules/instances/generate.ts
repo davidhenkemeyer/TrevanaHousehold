@@ -209,6 +209,8 @@ export async function planFamily(db: DbOrTx, familyId: string, now: Date): Promi
       priority: chore.defaultPriority,
       rewardAmount: chore.rewardAmount,
       effortMinutes: chore.effortMinutes,
+      // Job-board occurrences start with no assignee, waiting to be claimed.
+      board: assignment.open ? "OPEN" : "NONE",
     });
     for (const membershipId of assignment.assigneeIds) {
       assigneeRows.push({ instanceId: id, membershipId });

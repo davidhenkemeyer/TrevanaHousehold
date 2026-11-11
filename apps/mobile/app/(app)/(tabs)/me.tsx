@@ -85,6 +85,7 @@ export default function Me() {
         </Card>
       )}
 
+      <Button title="My rewards" variant="secondary" onPress={() => router.push("/rewards")} />
       <Button title="Switch person" variant="secondary" onPress={() => router.push("/who")} />
       <Button title="Sign out" variant="ghost" onPress={() => void signOut()} />
 

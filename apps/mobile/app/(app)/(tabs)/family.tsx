@@ -20,6 +20,7 @@ import {
   TextField,
 } from "../../../src/components/ui";
 import { CapacitySheet } from "../../../src/features/family/CapacitySheet";
+import { useRewards } from "../../../src/features/rewards/useRewards";
 import { formatMinutes, weeklyTotal } from "../../../src/features/week/week";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
@@ -30,6 +31,12 @@ export default function Family() {
   const queryClient = useQueryClient();
   const { familyId, role, family, membershipId } = useFamily();
   const isParent = role === "PARENT";
+  const rewards = useRewards();
+  /** A member's balance in the family's currency, when the viewer may see it. */
+  const balanceOf = (m: Member): string | undefined => {
+    const row = rewards.summary.data?.members.find((r) => r.member.membershipId === m.id);
+    return row && rewards.format ? rewards.format(row.balance) : undefined;
+  };
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["family", familyId] });
 
   const [kidName, setKidName] = useState("");
@@ -95,9 +102,21 @@ export default function Family() {
                 <Chip label={m.role === "PARENT" ? "PARENT" : "KID"} />
                 {m.hasPin && <Chip label="PIN SET" color={colors.success} />}
                 <Chip label={`${formatMinutes(weeklyTotal(m.capacity))}/WEEK`} />
+                {balanceOf(m) !== undefined && (
+                  <Chip label={balanceOf(m)!} color={colors.success} />
+                )}
               </View>
             </View>
           </View>
+          {isParent && rewards.enabled && (
+            <Button
+              title="Rewards"
+              variant="ghost"
+              accessibilityLabel={`Rewards for ${m.displayName}`}
+              onPress={() => router.push({ pathname: "/rewards", params: { member: m.id } })}
+              style={{ alignSelf: "flex-start" }}
+            />
+          )}
           {isParent && (
             <Button
               title="Daily time"
@@ -128,6 +147,13 @@ export default function Family() {
         </Card>
       ))}
 
+      {isParent && (
+        <Button
+          title="Rewards settings"
+          variant="secondary"
+          onPress={() => router.push("/rewards-settings")}
+        />
+      )}
       <Button
         title="Hand this device to someone"
         variant="secondary"

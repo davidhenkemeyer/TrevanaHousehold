@@ -35,6 +35,8 @@ export function AppText({
   children: ReactNode;
   numberOfLines?: number;
   accessibilityRole?: "header" | "text";
+  /** What a screen reader says instead of the text (e.g. "Balance: $5.00"). */
+  accessibilityLabel?: string;
   /** Lets people copy the text (codes, invite tokens). */
   selectable?: boolean;
 }) {

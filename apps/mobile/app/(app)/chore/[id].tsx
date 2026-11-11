@@ -19,6 +19,7 @@ import {
   PinList,
 } from "../../../src/features/photos/PhotoViews";
 import { DecisionSheet } from "../../../src/features/review/DecisionSheet";
+import { invalidateRewards } from "../../../src/features/rewards/useRewards";
 import { dueLabel } from "../../../src/features/today/sections";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
@@ -74,6 +75,7 @@ export default function ChoreDetail() {
       for (const key of ["instance", "reviewQueue", "agenda", "weekLoad"]) {
         void queryClient.invalidateQueries({ queryKey: [key, familyId] });
       }
+      invalidateRewards(queryClient, familyId);
     },
   });
 

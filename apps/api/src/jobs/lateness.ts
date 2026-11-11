@@ -9,6 +9,7 @@
 import { LATE_ELIGIBLE_STATUSES, shouldMarkLate } from "@titan/domain";
 import type { FastifyBaseLogger } from "fastify";
 import type { Deps } from "../deps.js";
+import { expireOpenInstance } from "../modules/instances/transitions.js";
 import { onMarkedLate } from "../modules/notifications/hooks.js";
 
 /** Instances handled per query, so a backlog never becomes one huge transaction. */
@@ -27,6 +28,8 @@ export async function markLateInstances(
     const batch = await deps.db.choreInstance.findMany({
       where: {
         isLate: false,
+        // Unclaimed job-board jobs are never late; they expire (below).
+        board: { not: "OPEN" },
         status: { in: eligible },
         dueAt: { lt: now },
         ...(afterId !== undefined && { id: { gt: afterId } }),
@@ -78,4 +81,31 @@ export async function markLateInstances(
 
   if (marked > 0) log.info({ marked }, "Marked chores late");
   return marked;
+}
+
+/**
+ * Job board: unclaimed jobs past their deadline quietly leave the board
+ * (a recurring job returns on its next date). Runs with late marking.
+ */
+export async function expireOpenJobs(
+  deps: Pick<Deps, "db" | "now">,
+  log: Pick<FastifyBaseLogger, "info">,
+): Promise<number> {
+  const now = deps.now();
+  let expired = 0;
+  for (;;) {
+    const batch = await deps.db.choreInstance.findMany({
+      where: { board: "OPEN", status: "NEW", dueAt: { lt: now } },
+      orderBy: { id: "asc" },
+      take: BATCH_SIZE,
+      select: { id: true },
+    });
+    if (batch.length === 0) break;
+    for (const { id } of batch) {
+      if (await deps.db.$transaction((tx) => expireOpenInstance(tx, id, now))) expired++;
+    }
+    if (batch.length < BATCH_SIZE) break;
+  }
+  if (expired > 0) log.info({ expired }, "Expired unclaimed jobs");
+  return expired;
 }

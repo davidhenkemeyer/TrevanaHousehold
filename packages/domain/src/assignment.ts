@@ -10,7 +10,10 @@
  *   ROTATE — the next member of the pool after whoever had it last, in pool order.
  *   AUTO   — the pool member with the most room that day (see pickAuto).
  *
- * For ROTATE and AUTO, an empty pool means "any family member".
+ *   OPEN   — nobody: the occurrence goes on the job board until someone in
+ *            the pool claims it. It charges no one's capacity while unclaimed.
+ *
+ * For ROTATE, AUTO, and OPEN, an empty pool means "any family member".
  *
  * Occurrences are planned day by day in date order. Within a day, FIXED chores
  * go first (they're not negotiable), then ROTATE, then AUTO, largest/most
@@ -28,7 +31,7 @@ import { minutesPerAssignee } from "./schedule.js";
 import type { ChoreStatus, Priority } from "./status.js";
 import { priorityRank } from "./status.js";
 
-export const ASSIGN_MODES = ["FIXED", "ROTATE", "AUTO"] as const;
+export const ASSIGN_MODES = ["FIXED", "ROTATE", "AUTO", "OPEN"] as const;
 export type AssignMode = (typeof ASSIGN_MODES)[number];
 
 /** Indexed by Weekday (0 = Sunday). */
@@ -81,6 +84,8 @@ export interface PlannedAssignment {
   assigneeIds: string[];
   /** True if this assignment pushed any assignee past their capacity for the day. */
   overCapacity: boolean;
+  /** True for job-board occurrences: no assignee until claimed. */
+  open: boolean;
 }
 
 export interface UnassignedOccurrence {
@@ -102,7 +107,7 @@ export interface AssignmentPlan {
   load: DayLoad[];
 }
 
-const MODE_ORDER: Record<AssignMode, number> = { FIXED: 0, ROTATE: 1, AUTO: 2 };
+const MODE_ORDER: Record<AssignMode, number> = { FIXED: 0, ROTATE: 1, AUTO: 2, OPEN: 3 };
 
 export function planAssignments(input: PlanInput): AssignmentPlan {
   validateInput(input);
@@ -138,6 +143,16 @@ export function planAssignments(input: PlanInput): AssignmentPlan {
   const unassigned: UnassignedOccurrence[] = [];
 
   for (const occ of [...occurrences].sort(compareOccurrences)) {
+    if (occ.mode === "OPEN") {
+      assignments.push({
+        key: occ.key,
+        date: occ.date,
+        assigneeIds: [],
+        overCapacity: false,
+        open: true,
+      });
+      continue;
+    }
     const pool = resolvePool(occ, memberById, allMemberIds);
     if (pool.length === 0) {
       unassigned.push({ key: occ.key, reason: "NO_ELIGIBLE_MEMBERS" });
@@ -170,7 +185,7 @@ export function planAssignments(input: PlanInput): AssignmentPlan {
     }
     if (occ.mode === "ROTATE") lastRotation.set(occ.choreId, assigneeIds[0] as string);
 
-    assignments.push({ key: occ.key, date: occ.date, assigneeIds, overCapacity });
+    assignments.push({ key: occ.key, date: occ.date, assigneeIds, overCapacity, open: false });
   }
 
   return { assignments, unassigned, load: summarizeLoad(load, members, capacityOf) };

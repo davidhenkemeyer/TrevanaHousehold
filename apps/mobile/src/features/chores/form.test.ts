@@ -24,6 +24,7 @@ function chore(overrides: Partial<Chore> = {}): Chore {
     name: "Dishes",
     description: "",
     cue: null,
+    kind: "ROUTINE",
     effortMinutes: 10,
     defaultPriority: "NORMAL",
     requiresPhoto: false,
@@ -115,6 +116,16 @@ describe("formFromChore / toUpdateBody", () => {
     });
   });
 
+  it("sends the chore's kind and job-board mode", () => {
+    const original = chore();
+    const f = formFromChore(original);
+    expect(f.kind).toBe("ROUTINE");
+    expect(
+      toUpdateBody({ ...f, kind: "EXTRA_JOB", assignMode: "OPEN", rewardAmount: 500 }, original),
+    ).toEqual({ kind: "EXTRA_JOB", assignMode: "OPEN", rewardAmount: 500 });
+    expect(validateChoreForm(form({ assignMode: "OPEN", eligibleMembershipIds: [] }))).toEqual({});
+  });
+
   it("sends reference photo changes", () => {
     const original = chore();
     const f = formFromChore(original);
@@ -198,5 +209,8 @@ describe("helpers", () => {
     expect(
       describeAssignment({ assignMode: "FIXED", eligibleMembershipIds: ["gone"] }, members),
     ).toBe("Nobody (owners have left)");
+    expect(describeAssignment({ assignMode: "OPEN", eligibleMembershipIds: [] }, members)).toBe(
+      "Job board (anyone can claim it)",
+    );
   });
 });

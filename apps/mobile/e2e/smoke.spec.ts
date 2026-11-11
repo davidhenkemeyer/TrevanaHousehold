@@ -402,3 +402,147 @@ test("photo proof: reference photo, required photo, and pins on review", async (
   await expect(text(page, "Pillow goes at the top")).toBeVisible();
   await shot(page, "24-pins-for-kid");
 });
+
+/** Signs up Mom with a family, Billy, and a quick-switch PIN, through the API. */
+async function familyWithBilly(label: string) {
+  const email = `e2e-${label}-${Date.now()}@example.com`;
+  const password = "correct horse battery";
+  const { tokens } = await api<{ tokens: { accessToken: string } }>("/v1/auth/signup", {
+    method: "POST",
+    body: { email, password, displayName: "Mom" },
+  });
+  const token = tokens.accessToken;
+  const created = await api<{ family: { id: string }; members: { id: string }[] }>("/v1/families", {
+    method: "POST",
+    token,
+    body: { name: "The Earners", timeZone: "America/Chicago" },
+  });
+  const familyId = created.family.id;
+  await api(`/v1/families/${familyId}/children`, {
+    method: "POST",
+    token,
+    body: { displayName: "Billy" },
+  });
+  await api(`/v1/families/${familyId}/members/${created.members[0]!.id}`, {
+    method: "PATCH",
+    token,
+    body: { pin: "4321" },
+  });
+  return { email, password, token, familyId };
+}
+
+async function signIn(page: Page, email: string, password: string) {
+  await page.goto("/");
+  await field(page, "Email").fill(email);
+  await field(page, "Password").fill(password);
+  await button(page, "Sign in").click();
+}
+
+const tabOf = (page: Page, name: string) =>
+  visible(page.getByRole("tab", { name: new RegExp(name) }));
+
+async function switchPerson(page: Page, name: string, pin?: string) {
+  await tabOf(page, "Me").click();
+  await button(page, "Switch person").click();
+  await button(page, name).click();
+  if (pin !== undefined) {
+    for (const digit of pin) await button(page, digit).click();
+    await button(page, "Done").click();
+  }
+}
+
+test("rewards: points, the job board, and asking for a reward", async ({ page }) => {
+  const { email, password } = await familyWithBilly("points");
+  await signIn(page, email, password);
+
+  // Turn on points and add a reward to the catalog.
+  await tabOf(page, "Family").click();
+  await button(page, "Rewards settings").click();
+  await button(page, "Points").click();
+  await field(page, "New reward").fill("Screen time");
+  await field(page, "Cost in points").fill("50");
+  await button(page, "Add reward").click();
+  await expect(text(page, "50 pts", true)).toBeVisible();
+  await shot(page, "30-rewards-settings");
+  await button(page, "Back").click();
+
+  // An extra job on the job board, worth 60 points.
+  await tabOf(page, "Chores").click();
+  await button(page, "New chore").click();
+  await button(page, "Extra job").click();
+  await field(page, "Name").fill("Wash the car");
+  await button(page, "Job board").click();
+  await field(page, "Points").fill("60");
+  await shot(page, "31-extra-job");
+  await button(page, "Add chore").click();
+  await expect(text(page, /Job board \(anyone can claim it\)/)).toBeVisible();
+
+  // Billy sees it on the board, claims it, and does it.
+  await switchPerson(page, "Billy");
+  await expect(text(page, "Job board · 1")).toBeVisible();
+  await expect(text(page, "+60 pts", true)).toBeVisible();
+  await shot(page, "32-job-board");
+  await button(page, "Claim Wash the car").click();
+  await expect(text(page, "To do · 1")).toBeVisible();
+  await expect(button(page, "Give Wash the car back to the job board")).toBeVisible();
+  await button(page, "Done ✓").click();
+  await expect(text(page, /Waiting for review · 1/)).toBeVisible();
+  await button(page, "My rewards: 0 pts").click();
+  await expect(text(page, "60 pts waiting for review")).toBeVisible();
+  await shot(page, "33-pending");
+  await button(page, "Back").click();
+
+  // Mom approves; the points land.
+  await switchPerson(page, "Mom", "4321");
+  await tabOf(page, "Review").click();
+  await button(page, "Approve Wash the car by Billy").click();
+  await expect(text(page, "All caught up!")).toBeVisible();
+
+  // Billy spends 50 of his 60 points; they're held right away.
+  await switchPerson(page, "Billy");
+  await button(page, "My rewards: 60 pts").click();
+  await button(page, "Ask for Screen time").click();
+  await expect(text(page, "WAITING", true)).toBeVisible();
+  await expect(visible(page.getByLabel("Balance: 10 pts"))).toBeVisible();
+  await expect(button(page, "Ask for Screen time")).toBeDisabled();
+  await shot(page, "34-asked");
+  await button(page, "Back").click();
+
+  // Mom sees the request in Review and says yes.
+  await switchPerson(page, "Mom", "4321");
+  await tabOf(page, "Review").click();
+  await expect(text(page, "Reward requests · 1")).toBeVisible();
+  await shot(page, "35-request");
+  await button(page, "Approve Screen time for Billy").click();
+  await expect(text(page, "All caught up!")).toBeVisible();
+});
+
+test("rewards: real money, with a payout larger than the balance", async ({ page }) => {
+  const { email, password, token, familyId } = await familyWithBilly("money");
+  await api(`/v1/families/${familyId}`, {
+    method: "PATCH",
+    token,
+    body: { rewardCurrency: "MONEY" },
+  });
+  await signIn(page, email, password);
+
+  await tabOf(page, "Family").click();
+  await button(page, "Rewards for Billy").click();
+  await expect(visible(page.getByLabel("Balance: $0.00"))).toBeVisible();
+  await button(page, "Record payout").click();
+  await field(page, "Amount").fill("5");
+  await field(page, "Note (optional)").fill("Allowance, paid ahead");
+  await visible(page.getByRole("button", { name: "Record payout" }).last()).click();
+  await expect(visible(page.getByLabel("Balance: -$5.00"))).toBeVisible();
+  await expect(text(page, "Paid out: Allowance, paid ahead")).toBeVisible();
+  await shot(page, "36-advance");
+
+  // A correction needs a note.
+  await button(page, "Correction").click();
+  await field(page, "Amount").fill("1.50");
+  await button(page, "Save correction").click();
+  await expect(text(page, "Say what you're correcting.")).toBeVisible();
+  await field(page, "What happened").fill("Forgot last week's car wash");
+  await button(page, "Save correction").click();
+  await expect(visible(page.getByLabel("Balance: -$3.50"))).toBeVisible();
+});

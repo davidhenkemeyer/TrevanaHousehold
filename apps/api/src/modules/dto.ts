@@ -26,6 +26,8 @@ export function toFamilyDto(family: Family): FamilyDto {
     id: family.id,
     name: family.name,
     timeZone: family.timeZone,
+    rewardCurrency: family.rewardCurrency,
+    currencyCode: family.currencyCode,
     createdAt: family.createdAt.toISOString(),
   };
 }
@@ -39,7 +41,6 @@ export function toMemberDto(membership: Membership & { user: User }): MemberDto 
     role: membership.role,
     // Stored as JSON; validate on the way out so a bad row fails loudly here.
     capacity: weeklyCapacitySchema.parse(membership.capacity),
-    pointsBalance: membership.pointsBalance,
     hasPin: membership.pinHash !== null,
     hasLogin: membership.user.email !== null && membership.user.passwordHash !== null,
   };

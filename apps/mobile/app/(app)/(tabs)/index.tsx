@@ -20,6 +20,8 @@ import {
   dayProgress,
   defaultScope,
 } from "../../../src/features/today/sections";
+import { rewardLabel } from "../../../src/features/rewards/format";
+import { invalidateRewards, useRewards } from "../../../src/features/rewards/useRewards";
 import { useApi, useFamily, useSession } from "../../../src/state/AppProvider";
 import { colors, radii, spacing } from "../../../src/theme";
 
@@ -45,11 +47,32 @@ export default function Today() {
     enabled: familyId !== undefined,
     refetchInterval: 60_000,
   });
-  const refresh = () => queryClient.invalidateQueries({ queryKey: agendaKey });
+  const rewards = useRewards();
+  // Open jobs this person could take: extra work for extra rewards.
+  const jobBoard = useQuery({
+    queryKey: ["jobBoard", familyId],
+    queryFn: () => api.jobBoard(familyId!),
+    enabled: familyId !== undefined,
+    refetchInterval: 60_000,
+  });
+  const jobs = jobBoard.data?.items ?? [];
+  const rewardText = (item: Instance) =>
+    rewards.format && item.rewardAmount > 0
+      ? rewardLabel(rewards.format, item.rewardAmount)
+      : undefined;
+  const refresh = () => {
+    invalidateRewards(queryClient, familyId);
+    return queryClient.invalidateQueries({ queryKey: agendaKey });
+  };
 
   const act = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "start" | "defer" | "reset" }) =>
-      api.act(familyId!, id, action),
+    mutationFn: ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: "start" | "defer" | "reset" | "claim" | "release";
+    }) => api.act(familyId!, id, action),
     onSettled: () => {
       setBusyId(null);
       void refresh();
@@ -125,6 +148,24 @@ export default function Today() {
                   {`Hi ${session?.user.displayName ?? ""}!`}
                 </AppText>
                 <AppText color="#FFFFFF">{today}</AppText>
+                {rewards.format && rewards.mine && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`My rewards: ${rewards.format(rewards.mine.balance)}`}
+                    onPress={() => router.push("/rewards")}
+                    style={{
+                      alignSelf: "flex-start",
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      borderRadius: radii.pill,
+                      paddingVertical: spacing.xs,
+                      paddingHorizontal: spacing.md,
+                    }}
+                  >
+                    <AppText variant="bodyStrong" color="#FFFFFF">
+                      {`${rewards.format(rewards.mine.balance)} ›`}
+                    </AppText>
+                  </Pressable>
+                )}
               </View>
               <ProgressRing done={progress.done} total={progress.total} />
             </View>
@@ -135,7 +176,7 @@ export default function Today() {
         <ErrorText
           message={errorMessage(agenda.error ?? act.error ?? (completing ? null : submit.error))}
         />
-        {agenda.isSuccess && sections.length === 0 && (
+        {agenda.isSuccess && sections.length === 0 && jobs.length === 0 && (
           <Card style={{ alignItems: "center", gap: spacing.sm }}>
             <AppText variant="h2">All clear!</AppText>
             <AppText color={colors.textMuted} style={{ textAlign: "center" }}>
@@ -158,12 +199,36 @@ export default function Today() {
                 item={item}
                 showAssignees={scope === "family"}
                 busy={busyId === item.id}
+                rewardText={rewardText(item)}
                 onAction={(action) => onAction(item, action)}
                 onOpen={() => router.push({ pathname: "/chore/[id]", params: { id: item.id } })}
               />
             ))}
           </View>
         ))}
+        {jobs.length > 0 && (
+          <View style={{ gap: spacing.md }}>
+            <View style={{ gap: spacing.xxs }}>
+              <AppText variant="bodyStrong" color={colors.info} accessibilityRole="header">
+                {`Job board · ${jobs.length}`}
+              </AppText>
+              <AppText variant="caption" color={colors.textMuted}>
+                Extra jobs anyone can take. First to claim it does it.
+              </AppText>
+            </View>
+            {jobs.map((item) => (
+              <ChoreCard
+                key={item.id}
+                item={item}
+                showAssignees={false}
+                busy={busyId === item.id}
+                rewardText={rewardText(item)}
+                onAction={(action) => onAction(item, action)}
+                onOpen={() => router.push({ pathname: "/chore/[id]", params: { id: item.id } })}
+              />
+            ))}
+          </View>
+        )}
       </Screen>
 
       <CompleteSheet

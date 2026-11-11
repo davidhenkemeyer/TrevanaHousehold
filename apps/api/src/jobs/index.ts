@@ -13,7 +13,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { PgBoss } from "pg-boss";
 import type { AppConfig } from "../config.js";
 import type { Deps } from "../deps.js";
-import { markLateInstances } from "./lateness.js";
+import { expireOpenJobs, markLateInstances } from "./lateness.js";
 import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
 
@@ -55,6 +55,7 @@ export async function startJobs(
   });
   await boss.work(JOBS.markLate.name, async () => {
     await markLateInstances(deps, log);
+    await expireOpenJobs(deps, log);
   });
   await boss.work(JOBS.cleanUpPhotos.name, async () => {
     await cleanUpPhotos(deps, log);

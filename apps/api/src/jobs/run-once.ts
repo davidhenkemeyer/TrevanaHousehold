@@ -6,7 +6,7 @@ import pino from "pino";
 import { loadConfig } from "../config.js";
 import { createDb } from "../db.js";
 import { createS3Storage } from "../lib/storage/s3.js";
-import { markLateInstances } from "./lateness.js";
+import { expireOpenJobs, markLateInstances } from "./lateness.js";
 import { cleanUpPhotos } from "./photoCleanup.js";
 import { planAllFamilies } from "./planning.js";
 
@@ -20,7 +20,10 @@ try {
   if (job === "plan") {
     console.log(await planAllFamilies(deps, log));
   } else if (job === "mark-late") {
-    console.log({ marked: await markLateInstances(deps, log) });
+    console.log({
+      marked: await markLateInstances(deps, log),
+      expiredJobs: await expireOpenJobs(deps, log),
+    });
   } else if (job === "cleanup-photos") {
     console.log(await cleanUpPhotos(deps, log));
   } else {

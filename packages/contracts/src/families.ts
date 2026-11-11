@@ -1,3 +1,4 @@
+import { MONEY_CODES, REWARD_CURRENCIES } from "@titan/domain";
 import { z } from "zod";
 import {
   avatarColorSchema,
@@ -18,13 +19,22 @@ export const createFamilyBodySchema = z.strictObject({
 });
 export type CreateFamilyBody = z.infer<typeof createFamilyBodySchema>;
 
-export const updateFamilyBodySchema = createFamilyBodySchema.partial();
+export const updateFamilyBodySchema = createFamilyBodySchema
+  .extend({
+    /** What chores pay in. Switching never converts or erases earlier balances. */
+    rewardCurrency: z.enum(REWARD_CURRENCIES),
+    /** Used when rewardCurrency is MONEY. */
+    currencyCode: z.enum(MONEY_CODES),
+  })
+  .partial();
 export type UpdateFamilyBody = z.infer<typeof updateFamilyBodySchema>;
 
 export const familySchema = z.object({
   id: idSchema,
   name: z.string(),
   timeZone: z.string(),
+  rewardCurrency: z.enum(REWARD_CURRENCIES),
+  currencyCode: z.string(),
   createdAt: isoDateTimeSchema,
 });
 export type Family = z.infer<typeof familySchema>;
@@ -37,7 +47,6 @@ export const memberSchema = z.object({
   avatarColor: z.string(),
   role: roleSchema,
   capacity: weeklyCapacitySchema,
-  pointsBalance: z.int(),
   /** Has a PIN for switching to this member on shared devices. */
   hasPin: z.boolean(),
   /** Member can sign in with email + password (parents, older kids). */

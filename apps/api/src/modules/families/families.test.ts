@@ -27,7 +27,6 @@ describe("families and members", () => {
         userId: mom.user.id,
         displayName: "Mom",
         role: "PARENT",
-        pointsBalance: 0,
         hasPin: false,
         hasLogin: true,
         capacity: { mon: 60, sat: 60 },
