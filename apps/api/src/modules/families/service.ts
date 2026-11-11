@@ -11,7 +11,6 @@
  *     switches back from a kid to that parent without the full password.
  */
 import type {
-  AuthResponse,
   CreateChildBody,
   CreateFamilyBody,
   FamilyDetail,
@@ -25,7 +24,7 @@ import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } fro
 import type { Prisma } from "../../generated/prisma/client.js";
 import { hashSecret, verifySecret } from "../../lib/secrets.js";
 import { requireMember, requireParent } from "../access.js";
-import { issueSession, revokeAllSessions } from "../auth/sessions.js";
+import { type IssuedAuth, issueSession, revokeAllSessions } from "../auth/sessions.js";
 import { replanUntouched } from "../instances/generate.js";
 import { toFamilyDto, toMemberDto, toUserDto } from "../dto.js";
 
@@ -243,7 +242,7 @@ export async function switchToMember(
   familyId: string,
   membershipId: string,
   pin: string | undefined,
-): Promise<AuthResponse> {
+): Promise<IssuedAuth> {
   const caller = await requireMember(deps.db, familyId, callerUserId);
   const target = await findActiveMember(deps.db, familyId, membershipId);
   const isSelf = target.userId === caller.userId;

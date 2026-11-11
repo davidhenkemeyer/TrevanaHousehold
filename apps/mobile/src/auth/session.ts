@@ -20,6 +20,18 @@ export interface SessionStorage {
   clear(): Promise<void>;
 }
 
+/**
+ * What may be saved on this device. On the web, nothing secret: storage there
+ * is readable by any script on the page. The refresh token is an httpOnly
+ * cookie and the access token stays in memory, so after a reload the first
+ * request refreshes through the cookie.
+ */
+export function persistable(session: StoredSession, web: boolean): StoredSession {
+  if (!web) return session;
+  const { refreshToken: _cookie, ...tokens } = session.tokens;
+  return { user: session.user, tokens: { ...tokens, accessToken: "" } };
+}
+
 export class SessionManager {
   private session: StoredSession | null = null;
   private loaded = false;
@@ -28,7 +40,8 @@ export class SessionManager {
 
   constructor(
     private readonly storage: SessionStorage,
-    private readonly refreshTokens: (refreshToken: string) => Promise<Tokens>,
+    /** Native apps pass their stored token; on the web it's undefined (the cookie is used). */
+    private readonly refreshTokens: (refreshToken: string | undefined) => Promise<Tokens>,
   ) {}
 
   async init(): Promise<void> {

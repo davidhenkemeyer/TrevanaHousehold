@@ -7,6 +7,7 @@ import {
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Deps } from "../../deps.js";
 import { createAuthenticateHook } from "../../plugins/authenticate.js";
+import { deliverTokens } from "../../plugins/webSession.js";
 import * as pairing from "./service.js";
 
 /** Parent side: issue a code for a kid's phone. */
@@ -38,6 +39,9 @@ export const pairingPublicRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async 
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
       schema: { body: pairBodySchema, response: { 200: authResponseSchema } },
     },
-    async (request) => pairing.pair(deps, request.body.code),
+    async (request, reply) => {
+      const result = await pairing.pair(deps, request.body.code);
+      return { ...result, tokens: deliverTokens(request, reply, deps.config, result.tokens) };
+    },
   );
 };

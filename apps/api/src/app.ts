@@ -2,6 +2,7 @@
  * Builds the Fastify app from explicit dependencies. The server (server.ts)
  * and the tests both call this, so tests exercise the real app.
  */
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -54,6 +55,15 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   };
 
   const app = Fastify({
+    // Behind a hosting proxy, request.ip is the real client (rate limits, logs).
+    // A hop count trusts that many proxies, nearest first.
+    trustProxy:
+      typeof config.trustProxy === "number"
+        ? (
+            (hops: number) => (_address: string, hop: number) =>
+              hop < hops
+          )(config.trustProxy)
+        : config.trustProxy,
     logger: {
       level: config.logLevel,
       // Never write credentials to logs.
@@ -70,13 +80,26 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(cors, {
     origin: config.corsOrigins,
     methods: ["GET", "HEAD", "POST", "PATCH", "DELETE"],
+    // The web app's refresh token is an httpOnly cookie (plugins/webSession.ts).
+    // Safe because origins are an explicit list, never "*".
+    credentials: true,
   });
+  await app.register(cookie);
   if (config.rateLimitEnabled) {
     // global: false → only routes that set `config.rateLimit` are limited.
     // When the plugin isn't registered, those per-route settings are simply ignored.
     await app.register(rateLimit, { global: false, max: 100, timeWindow: "1 minute" });
   }
 
+  // Liveness: the process is up and serving. No database, so a brief database
+  // outage doesn't make the host restart a healthy machine.
+  app.get(
+    "/health/live",
+    { schema: { response: { 200: z.object({ status: z.literal("ok") }) } } },
+    async () => ({ status: "ok" as const }),
+  );
+
+  // Readiness: also checks the database.
   app.get(
     "/health",
     { schema: { response: { 200: z.object({ status: z.literal("ok") }) } } },

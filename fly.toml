@@ -1,0 +1,39 @@
+# Fly.io configuration for the API (an example: nothing is deployed until you
+# run `fly launch --no-deploy` and `fly deploy`; see docs/deploy.md).
+# Secrets (DATABASE_URL, JWT_SECRET, S3_*, CORS_ORIGINS) are set with
+# `fly secrets set`, never here.
+
+app = "titan-household-api" # change to your Fly app name
+primary_region = "ord"      # pick the region closest to your families and database
+
+[build]
+  dockerfile = "apps/api/Dockerfile"
+
+[deploy]
+  # Apply database migrations before the new version takes traffic.
+  release_command = "npm run db:deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  LOG_LEVEL = "info"
+  RUN_JOBS = "true"   # one machine runs the background jobs
+  TRUST_PROXY = "1"   # Fly's edge proxy
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Keep one machine running: it runs the scheduled jobs (planning, digests).
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

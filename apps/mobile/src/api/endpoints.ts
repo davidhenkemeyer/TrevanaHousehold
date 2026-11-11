@@ -72,10 +72,16 @@ export function createApi(http: HttpClient) {
       http.request<AuthResponse>("POST", "/v1/auth/login", body, { auth: false }),
     pair: (code: string) =>
       http.request<AuthResponse>("POST", "/v1/auth/pair", { code }, { auth: false }),
-    refresh: (refreshToken: string) =>
-      http.request<Tokens>("POST", "/v1/auth/refresh", { refreshToken }, { auth: false }),
-    logout: (refreshToken: string) =>
-      http.request<void>("POST", "/v1/auth/logout", { refreshToken }, { auth: false }),
+    // Native apps send the refresh token; the web app has none (it's an
+    // httpOnly cookie the browser sends) and posts an empty body.
+    refresh: (refreshToken?: string) =>
+      http.request<Tokens>("POST", "/v1/auth/refresh", refreshToken ? { refreshToken } : {}, {
+        auth: false,
+      }),
+    logout: (refreshToken?: string) =>
+      http.request<void>("POST", "/v1/auth/logout", refreshToken ? { refreshToken } : {}, {
+        auth: false,
+      }),
     me: () => http.request<MeResponse>("GET", "/v1/me"),
 
     // Families and members

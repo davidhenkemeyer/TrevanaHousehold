@@ -11,17 +11,12 @@
  * live code is impractical.
  */
 import { randomInt } from "node:crypto";
-import {
-  type AuthResponse,
-  PAIRING_ALPHABET,
-  PAIRING_CODE_LENGTH,
-  type PairingCodeResponse,
-} from "@titan/contracts";
+import { PAIRING_ALPHABET, PAIRING_CODE_LENGTH, type PairingCodeResponse } from "@titan/contracts";
 import type { Deps } from "../../deps.js";
 import { badRequest, forbidden, notFound } from "../../errors.js";
 import { sha256 } from "../../lib/secrets.js";
 import { requireParent } from "../access.js";
-import { issueSession } from "../auth/sessions.js";
+import { type IssuedAuth, issueSession } from "../auth/sessions.js";
 import { toUserDto } from "../dto.js";
 
 export const PAIRING_TTL_MINUTES = 10;
@@ -75,7 +70,7 @@ export async function createPairingCode(
 }
 
 /** Signs this device in as the kid the code was issued for. `code` is already normalized. */
-export async function pair(deps: Deps, code: string): Promise<AuthResponse> {
+export async function pair(deps: Deps, code: string): Promise<IssuedAuth> {
   const now = deps.now();
   const invalid = () =>
     badRequest(

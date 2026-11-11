@@ -14,6 +14,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { Platform } from "react-native";
 import { type Api, createApi } from "../api/endpoints";
 import { createHttpClient } from "../api/http";
 import { SessionManager, type StoredSession } from "../auth/session";
@@ -45,6 +46,7 @@ function createServices() {
       baseUrl: apiBaseUrl(),
       getAccessToken: () => manager.accessToken(),
       refreshAccessToken: () => manager.refreshAccessToken(),
+      browser: Platform.OS === "web",
     }),
   );
   holder.api = api;
@@ -130,7 +132,8 @@ export function useSession(): {
     const refreshToken = manager.current?.tokens.refreshToken;
     await manager.signOut();
     // Best effort: also end the session on the server.
-    if (refreshToken) await api.logout(refreshToken).catch(() => undefined);
+    // (On the web there's no token here; the API reads the cookie and clears it.)
+    await api.logout(refreshToken).catch(() => undefined);
   }, [api, manager]);
   return { session: snapshot, loaded, start, signOut };
 }

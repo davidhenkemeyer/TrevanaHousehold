@@ -25,6 +25,12 @@ const envSchema = z.object({
   S3_REGION: z.string().default("us-east-1"),
   S3_ACCESS_KEY: z.string().default("chores"),
   S3_SECRET_KEY: z.string().default("chores-dev-secret"),
+  // Behind a hosting proxy (Fly, Railway, Render): trust X-Forwarded-For so rate
+  // limits and logs see the real client. "true", "false", or a hop count.
+  TRUST_PROXY: z.string().default("false"),
+  // The web sign-in cookie is Secure (https only) unless this is "false".
+  // Defaults to true in production and false in development (http://localhost).
+  COOKIE_SECURE: z.enum(["true", "false"]).optional(),
   // Optional: Expo's push security token, if "enhanced push security" is on for the project.
   EXPO_ACCESS_TOKEN: z.string().optional(),
 });
@@ -60,6 +66,10 @@ export interface AppConfig {
   inviteTtlDays: number;
   storage: StorageConfig;
   expoAccessToken?: string;
+  /** Fastify's trustProxy: false, true, or the number of proxy hops. */
+  trustProxy: boolean | number;
+  /** Whether the web refresh-token cookie is marked Secure. */
+  cookieSecure: boolean;
   /** Proof photos are deleted this many days after the submission was reviewed. */
   photoRetentionDays: number;
 }
@@ -94,6 +104,39 @@ function lanStorageUrl(endpoint: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
+/** Development defaults that must never reach production. */
+const DEV_JWT_SECRET = "dev-only-secret-change-me-0123456789abcdef";
+const DEV_S3_SECRET = "chores-dev-secret";
+
+/** Settings that are fine in development but unsafe or broken in production. */
+function productionProblems(e: z.infer<typeof envSchema>, corsOrigins: string[]): string[] {
+  const problems: string[] = [];
+  if (e.JWT_SECRET === DEV_JWT_SECRET) {
+    problems.push("  JWT_SECRET: set a real secret in production (not the example value)");
+  }
+  if (e.S3_SECRET_KEY === DEV_S3_SECRET) {
+    problems.push("  S3_SECRET_KEY: set a real key in production");
+  }
+  if (corsOrigins.length === 0) {
+    problems.push("  CORS_ORIGINS: list the web app's origin (e.g. https://app.example.com)");
+  }
+  if (corsOrigins.some((o) => o === "*" || !o.startsWith("https://"))) {
+    problems.push("  CORS_ORIGINS: every origin must be an explicit https:// address");
+  }
+  if (!e.S3_PUBLIC_URL) {
+    problems.push("  S3_PUBLIC_URL: set the https address apps use to reach photo storage");
+  } else if (!e.S3_PUBLIC_URL.startsWith("https://")) {
+    problems.push("  S3_PUBLIC_URL: must be https in production");
+  }
+  return problems;
+}
+
+function parseTrustProxy(value: string): boolean | number {
+  if (value === "true") return true;
+  const hops = Number(value);
+  return Number.isInteger(hops) && hops > 0 ? hops : false;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.safeParse(env);
   if (!parsed.success) {
@@ -102,14 +145,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   const e = parsed.data;
   const production = e.NODE_ENV === "production";
-  if (production && e.S3_SECRET_KEY === "chores-dev-secret") {
-    throw new Error(
-      "Invalid environment configuration:\n  S3_SECRET_KEY: set a real key in production",
-    );
-  }
   const corsOrigins = e.CORS_ORIGINS.split(",")
     .map((o) => o.trim())
     .filter(Boolean);
+  if (production) {
+    const problems = productionProblems(e, corsOrigins);
+    if (problems.length > 0) {
+      throw new Error(`Invalid environment configuration:\n${problems.join("\n")}`);
+    }
+  }
   return {
     databaseUrl: e.DATABASE_URL,
     jwtSecret: e.JWT_SECRET,
@@ -133,6 +177,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       createBucket: !production,
       corsOrigins,
     },
+    trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    cookieSecure: e.COOKIE_SECURE ? e.COOKIE_SECURE === "true" : production,
     photoRetentionDays: 90,
     ...(e.EXPO_ACCESS_TOKEN && { expoAccessToken: e.EXPO_ACCESS_TOKEN }),
   };

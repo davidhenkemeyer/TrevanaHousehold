@@ -1,9 +1,7 @@
 import type {
-  AuthResponse,
   LoginBody,
   MeResponse,
   SignupBody,
-  Tokens,
   UpdateMeBody,
   User as UserDto,
 } from "@titan/contracts";
@@ -12,9 +10,15 @@ import type { Deps } from "../../deps.js";
 import { conflict, isUniqueViolation, notFound, unauthorized } from "../../errors.js";
 import { hashSecret, verifyAgainstDummy, verifySecret } from "../../lib/secrets.js";
 import { toUserDto } from "../dto.js";
-import { issueSession, revokeSession, rotateSession } from "./sessions.js";
+import {
+  type IssuedAuth,
+  type IssuedTokens,
+  issueSession,
+  revokeSession,
+  rotateSession,
+} from "./sessions.js";
 
-export async function signup(deps: Deps, body: SignupBody): Promise<AuthResponse> {
+export async function signup(deps: Deps, body: SignupBody): Promise<IssuedAuth> {
   const passwordHash = await hashSecret(body.password);
   try {
     const user = await deps.db.user.create({
@@ -34,7 +38,7 @@ export async function signup(deps: Deps, body: SignupBody): Promise<AuthResponse
   }
 }
 
-export async function login(deps: Deps, body: LoginBody): Promise<AuthResponse> {
+export async function login(deps: Deps, body: LoginBody): Promise<IssuedAuth> {
   const user = await deps.db.user.findUnique({ where: { email: body.email } });
   const ok = user?.passwordHash
     ? await verifySecret(user.passwordHash, body.password)
@@ -46,7 +50,7 @@ export async function login(deps: Deps, body: LoginBody): Promise<AuthResponse> 
   return { user: toUserDto(user), tokens: await issueSession(deps, user.id) };
 }
 
-export function refresh(deps: Deps, refreshToken: string): Promise<Tokens> {
+export function refresh(deps: Deps, refreshToken: string): Promise<IssuedTokens> {
   return rotateSession(deps, refreshToken);
 }
 

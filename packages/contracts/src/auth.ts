@@ -23,15 +23,24 @@ export const loginBodySchema = z.strictObject({
 });
 export type LoginBody = z.infer<typeof loginBodySchema>;
 
-export const refreshBodySchema = z.strictObject({ refreshToken: z.string().min(1).max(200) });
+/**
+ * Native apps send the refresh token in the body. The web app sends none: its
+ * token is in an httpOnly cookie (with the `X-Titan-Client: web` header).
+ */
+export const refreshBodySchema = z.strictObject({
+  refreshToken: z.string().min(1).max(200).optional(),
+});
 export type RefreshBody = z.infer<typeof refreshBodySchema>;
 
 export const tokensSchema = z.object({
   /** Short-lived JWT; send as `Authorization: Bearer <token>`. */
   accessToken: z.string(),
   accessTokenExpiresAt: isoDateTimeSchema,
-  /** Long-lived, single-use; exchange at /v1/auth/refresh for a new pair. */
-  refreshToken: z.string(),
+  /**
+   * Long-lived, single-use; exchange at /v1/auth/refresh for a new pair.
+   * Absent for the web app, which gets it as an httpOnly cookie instead.
+   */
+  refreshToken: z.string().optional(),
   refreshTokenExpiresAt: isoDateTimeSchema,
 });
 export type Tokens = z.infer<typeof tokensSchema>;

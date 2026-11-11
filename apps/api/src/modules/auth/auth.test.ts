@@ -1,4 +1,5 @@
-import type { MeResponse, Tokens } from "@titan/contracts";
+import type { MeResponse } from "@titan/contracts";
+import type { IssuedTokens } from "./sessions.js";
 import { describe, expect, it } from "vitest";
 import { PASSWORD, days, minutes, useTestApp } from "../../test/harness.js";
 
@@ -106,14 +107,14 @@ describe("auth", () => {
       const mom = await t.signup();
       const first = await refresh(mom.tokens.refreshToken);
       expect(first.statusCode).toBe(200);
-      const next = first.json<Tokens>();
+      const next = first.json<IssuedTokens>();
       expect(next.refreshToken).not.toBe(mom.tokens.refreshToken);
       expect((await refresh(next.refreshToken)).statusCode).toBe(200);
     });
 
     it("revoke every session when a used token is replayed", async () => {
       const mom = await t.signup();
-      const next = (await refresh(mom.tokens.refreshToken)).json<Tokens>();
+      const next = (await refresh(mom.tokens.refreshToken)).json<IssuedTokens>();
 
       // Someone replays the original (stolen) token...
       const replay = await refresh(mom.tokens.refreshToken);

@@ -3,8 +3,8 @@
  * Phones use kv.native.ts (the OS keychain/keystore via expo-secure-store);
  * Metro picks the right file per platform.
  *
- * Note: localStorage is readable by any script on the page. Fine for the MVP;
- * the web app should move tokens to httpOnly cookies before public launch.
+ * Note: localStorage is readable by any script on the page, so no tokens are
+ * kept here (the refresh token is an httpOnly cookie; see auth/session.ts).
  */
 export const kv = {
   async get(key: string): Promise<string | null> {

@@ -1,7 +1,7 @@
 import type { Tokens } from "@titan/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/http";
-import { SessionManager, type SessionStorage, type StoredSession } from "./session";
+import { SessionManager, type SessionStorage, type StoredSession, persistable } from "./session";
 
 const tokens = (n: number): Tokens => ({
   accessToken: `access-${n}`,
@@ -90,5 +90,33 @@ describe("SessionManager", () => {
     });
     expect(manager.current?.user.displayName).toBe("Sally");
     expect(storage.value?.tokens.accessToken).toBe("access-9");
+  });
+});
+
+describe("what a device may save", () => {
+  it("keeps everything on phones (the OS keychain)", () => {
+    expect(persistable(session, false)).toEqual(session);
+  });
+
+  it("saves no tokens on the web (refresh is a cookie, access stays in memory)", () => {
+    const saved = persistable(session, true);
+    expect(saved.user).toEqual(session.user);
+    expect(saved.tokens.accessToken).toBe("");
+    expect(saved.tokens).not.toHaveProperty("refreshToken");
+    expect(JSON.stringify(saved)).not.toContain("refresh-1");
+    expect(JSON.stringify(saved)).not.toContain("access-1");
+  });
+
+  it("refreshes through the cookie after a web reload", async () => {
+    const storage = memoryStorage(persistable(session, true));
+    const refresh = vi.fn(async (_token: string | undefined) => {
+      const { refreshToken: _r, ...fresh } = tokens(2);
+      return fresh;
+    });
+    const manager = new SessionManager(storage, refresh);
+    await manager.init();
+    expect(manager.accessToken()).toBe("");
+    expect(await manager.refreshAccessToken()).toBe("access-2");
+    expect(refresh).toHaveBeenCalledWith(undefined);
   });
 });

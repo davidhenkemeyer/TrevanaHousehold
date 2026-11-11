@@ -86,4 +86,19 @@ describe("http client", () => {
     });
     await expect(client.request("GET", "/v1/me")).rejects.toMatchObject({ code: "NETWORK_ERROR" });
   });
+
+  it("on the web, identifies itself and sends cookies (the refresh token is one)", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(json(200, {}));
+    const client = createHttpClient({
+      baseUrl: "http://api.test",
+      fetch,
+      getAccessToken: () => null,
+      refreshAccessToken: async () => null,
+      browser: true,
+    });
+    await client.request("POST", "/v1/auth/refresh", {}, { auth: false });
+    const init = fetch.mock.calls[0]?.[1];
+    expect(init?.credentials).toBe("include");
+    expect((init?.headers as Record<string, string>)["x-titan-client"]).toBe("web");
+  });
 });

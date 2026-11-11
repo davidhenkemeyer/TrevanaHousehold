@@ -1,0 +1,16 @@
+# Keep the build context small and free of secrets.
+**/node_modules
+**/dist
+**/.turbo
+**/.expo
+**/src/generated
+**/e2e/output
+**/.env
+**/.env.*
+!**/.env.*.example
+.git
+.github
+apps/mobile
+assets
+docs
+coverage

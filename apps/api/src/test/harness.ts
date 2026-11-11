@@ -7,16 +7,15 @@
  */
 import type {
   AgendaResponse,
-  AuthResponse,
   Chore,
   CreateUploadResponse,
   FamilyDetail,
   Member,
-  Tokens,
 } from "@titan/contracts";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";
+import type { IssuedAuth, IssuedTokens } from "../modules/auth/sessions.js";
 import { type AppConfig, loadConfig } from "../config.js";
 import { type Db, createDb } from "../db.js";
 import { type FakePush, createFakePush } from "./fakePush.js";
@@ -26,7 +25,7 @@ import { testDatabaseUrl } from "./testDatabase.js";
 /** The fixed starting instant for every test. */
 export const T0 = new Date("2026-11-10T12:00:00.000Z");
 
-export interface Session extends AuthResponse {
+export interface Session extends IssuedAuth {
   headers: { authorization: string };
 }
 
@@ -81,7 +80,7 @@ export const PASSWORD = "correct horse battery";
 export const minutes = (n: number) => n * 60_000;
 export const days = (n: number) => n * 86_400_000;
 
-function asSession(auth: AuthResponse): Session {
+function asSession(auth: IssuedAuth): Session {
   return { ...auth, headers: { authorization: `Bearer ${auth.tokens.accessToken}` } };
 }
 
@@ -167,7 +166,7 @@ export function useTestApp(): TestApp {
         },
       });
       expectStatus(res, 201);
-      return asSession(res.json<AuthResponse>());
+      return asSession(res.json<IssuedAuth>());
     },
     async createFamily(parent, name = "The Testers") {
       const res = await t.request("POST", "/v1/families", {
@@ -192,14 +191,14 @@ export function useTestApp(): TestApp {
         { session: caller, body: pin === undefined ? {} : { pin } },
       );
       expectStatus(res, 200);
-      return asSession(res.json<AuthResponse>());
+      return asSession(res.json<IssuedAuth>());
     },
     async refresh(session) {
       const res = await t.request("POST", "/v1/auth/refresh", {
         body: { refreshToken: session.tokens.refreshToken },
       });
       expectStatus(res, 200);
-      return asSession({ user: session.user, tokens: res.json<Tokens>() });
+      return asSession({ user: session.user, tokens: res.json<IssuedTokens>() });
     },
     async createChore(parent, familyId, body = {}) {
       const res = await t.request("POST", `/v1/families/${familyId}/chores`, {

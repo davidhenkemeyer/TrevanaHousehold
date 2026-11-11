@@ -6,12 +6,20 @@
  * a copy, so every session of that user is revoked (refresh-token reuse
  * detection, per OAuth 2.0 security best practice).
  */
-import type { Tokens } from "@titan/contracts";
+import type { AuthResponse, Tokens } from "@titan/contracts";
 import type { Deps } from "../../deps.js";
 import { unauthorized } from "../../errors.js";
 import { randomToken, sha256 } from "../../lib/secrets.js";
 
 const MS_PER_DAY = 86_400_000;
+
+/**
+ * Tokens as issued, always with the refresh token. The route decides how it
+ * reaches the client: in the body (native apps) or as an httpOnly cookie
+ * (the web app; see plugins/webSession.ts).
+ */
+export type IssuedTokens = Tokens & { refreshToken: string };
+export type IssuedAuth = Omit<AuthResponse, "tokens"> & { tokens: IssuedTokens };
 
 type TxOrDb = Pick<Deps["db"], "refreshToken">;
 
@@ -29,7 +37,7 @@ async function toTokens(
   userId: string,
   now: Date,
   refresh: { token: string; expiresAt: Date },
-): Promise<Tokens> {
+): Promise<IssuedTokens> {
   const access = await deps.accessTokens.sign(userId, now);
   return {
     accessToken: access.token,
@@ -40,7 +48,7 @@ async function toTokens(
 }
 
 /** Starts a new session for a user (sign-up, login, profile switch). */
-export async function issueSession(deps: Deps, userId: string): Promise<Tokens> {
+export async function issueSession(deps: Deps, userId: string): Promise<IssuedTokens> {
   const now = deps.now();
   const refresh = await createRefreshToken(deps, deps.db, userId, now);
   return toTokens(deps, userId, now, refresh);
@@ -50,7 +58,7 @@ const invalidRefresh = () =>
   unauthorized("INVALID_REFRESH_TOKEN", "Your session has ended. Sign in again.");
 
 /** Exchanges a refresh token for a new token pair. */
-export async function rotateSession(deps: Deps, refreshToken: string): Promise<Tokens> {
+export async function rotateSession(deps: Deps, refreshToken: string): Promise<IssuedTokens> {
   const now = deps.now();
   const existing = await deps.db.refreshToken.findUnique({
     where: { tokenHash: sha256(refreshToken) },

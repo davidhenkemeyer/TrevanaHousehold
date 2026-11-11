@@ -1,5 +1,6 @@
+import { Platform } from "react-native";
 import { kv } from "../lib/kv";
-import type { SessionStorage, StoredSession } from "./session";
+import { type SessionStorage, type StoredSession, persistable } from "./session";
 
 const SESSION_KEY = "titan.session";
 
@@ -8,7 +9,9 @@ export const sessionStorage: SessionStorage = {
     const raw = await kv.get(SESSION_KEY);
     return raw ? (JSON.parse(raw) as StoredSession) : null;
   },
-  save: (session) => kv.set(SESSION_KEY, JSON.stringify(session)),
+  // On the web, tokens are never written to storage (see persistable).
+  save: (session) =>
+    kv.set(SESSION_KEY, JSON.stringify(persistable(session, Platform.OS === "web"))),
   clear: () => kv.remove(SESSION_KEY),
 };
 

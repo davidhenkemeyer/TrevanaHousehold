@@ -14,6 +14,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { createAuthenticateHook } from "../../plugins/authenticate.js";
+import { deliverTokens } from "../../plugins/webSession.js";
 import * as families from "./service.js";
 
 export const familyRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app, { deps }) => {
@@ -116,13 +117,15 @@ export const familyRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app, {
         response: { 200: authResponseSchema },
       },
     },
-    async (request) =>
-      families.switchToMember(
+    async (request, reply) => {
+      const result = await families.switchToMember(
         deps,
         request.userId,
         request.params.familyId,
         request.params.membershipId,
         request.body.pin,
-      ),
+      );
+      return { ...result, tokens: deliverTokens(request, reply, deps.config, result.tokens) };
+    },
   );
 };

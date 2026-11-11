@@ -33,6 +33,11 @@ export interface HttpClientOptions {
   getAccessToken: () => string | null;
   /** Gets a fresh access token. Returns null when the session has ended. */
   refreshAccessToken: () => Promise<string | null>;
+  /**
+   * The web app: say so with `X-Titan-Client: web` and send cookies, so the
+   * API keeps the refresh token in an httpOnly cookie instead of the body.
+   */
+  browser?: boolean;
 }
 
 export interface HttpClient {
@@ -77,10 +82,12 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     const headers: Record<string, string> = { accept: "application/json" };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (token) headers.authorization = `Bearer ${token}`;
+    if (options.browser) headers["x-titan-client"] = "web";
     try {
       return await doFetch(options.baseUrl + path, {
         method,
         headers,
+        ...(options.browser && { credentials: "include" as const }),
         ...(body !== undefined && { body: JSON.stringify(body) }),
       });
     } catch {

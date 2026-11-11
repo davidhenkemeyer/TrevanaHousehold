@@ -671,3 +671,28 @@ test("notifications: the inbox and per-kind settings", async ({ page }) => {
   ).toHaveAttribute("aria-selected", "true");
   await shot(page, "52-settings");
 });
+
+test("web sign-in keeps no tokens in page storage and survives a reload", async ({ page }) => {
+  const email = `e2e-cookie-${Date.now()}@example.com`;
+  await page.goto("/");
+  await text(page, "New here? Create a family account").click();
+  await field(page, "Your name").fill("Mom");
+  await field(page, "Email").fill(email);
+  await field(page, "Password (at least 8 characters)").fill("correct horse battery");
+  await button(page, "Create account").click();
+  await expect(text(page, "Let's set up your family. You'll add your kids next.")).toBeVisible();
+
+  // The refresh token is an httpOnly cookie; page storage holds no token.
+  // The cookie is scoped to the API's /v1/auth path.
+  const cookies = await page.context().cookies(`${API}/v1/auth/refresh`);
+  const refresh = cookies.find((c) => c.name === "titan_rt");
+  expect(refresh?.httpOnly).toBe(true);
+  const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(stored).not.toContain(refresh!.value);
+  expect(stored).not.toMatch(/eyJ[\w-]+\.[\w-]+\./); // no JWT
+
+  // Opening the app again (a fresh page load), the cookie signs us back in.
+  // (From "/": the local static server has no fallback for deep links.)
+  await page.goto("/");
+  await expect(text(page, "Let's set up your family. You'll add your kids next.")).toBeVisible();
+});
