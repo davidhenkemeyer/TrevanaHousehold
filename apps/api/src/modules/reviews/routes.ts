@@ -7,7 +7,7 @@ import {
   reviewQueueSchema,
   reviewResponseSchema,
   submissionParamsSchema,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Deps } from "../../deps.js";
 import { createAuthenticateHook } from "../../plugins/authenticate.js";

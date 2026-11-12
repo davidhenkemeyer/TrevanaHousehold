@@ -7,7 +7,7 @@ import {
   REVIEW_POLICIES,
   type RecurrenceRule,
   validateRecurrenceRule,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import { idSchema, isoDateTimeSchema } from "./common.js";
 

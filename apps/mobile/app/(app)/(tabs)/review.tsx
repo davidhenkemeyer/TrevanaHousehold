@@ -13,7 +13,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { ReviewBody, ReviewQueue, ReviewQueueItem } from "@titan/contracts";
+import type { ReviewBody, ReviewQueue, ReviewQueueItem } from "@tenara/contracts";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";

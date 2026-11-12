@@ -11,7 +11,7 @@ import { createS3Storage } from "./s3.js";
 const config = loadConfig({
   DATABASE_URL: "postgresql://unused",
   JWT_SECRET: "test-secret-that-is-at-least-32-characters-long",
-  S3_BUCKET: "titan-photos-test",
+  S3_BUCKET: "tenara-photos-test",
   CORS_ORIGINS: "http://localhost:8081",
   // Sign for localhost: this test runs on the same machine as the server.
   S3_PUBLIC_URL: process.env.S3_ENDPOINT ?? "http://localhost:9000",

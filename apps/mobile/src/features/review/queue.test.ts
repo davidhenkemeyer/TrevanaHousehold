@@ -1,4 +1,4 @@
-import type { ReviewQueueItem } from "@titan/contracts";
+import type { ReviewQueueItem } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { batchEligibleIds, describeBatchResult, groupByChild } from "./queue";
 

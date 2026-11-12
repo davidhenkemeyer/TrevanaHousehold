@@ -11,7 +11,7 @@
  * live code is impractical.
  */
 import { randomInt } from "node:crypto";
-import { PAIRING_ALPHABET, PAIRING_CODE_LENGTH, type PairingCodeResponse } from "@titan/contracts";
+import { PAIRING_ALPHABET, PAIRING_CODE_LENGTH, type PairingCodeResponse } from "@tenara/contracts";
 import type { Deps } from "../../deps.js";
 import { badRequest, forbidden, notFound } from "../../errors.js";
 import { sha256 } from "../../lib/secrets.js";

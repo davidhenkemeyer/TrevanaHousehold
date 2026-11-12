@@ -1,5 +1,5 @@
 /**
- * One typed function per API endpoint. Types come from @titan/contracts, so a
+ * One typed function per API endpoint. Types come from @tenara/contracts, so a
  * change to the API contract shows up here as a type error.
  */
 import type {
@@ -54,7 +54,7 @@ import type {
   UpdateFamilyBody,
   UpdateMemberBody,
   WeekLoad,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import type { HttpClient } from "./http";
 
 function query(params: Record<string, string | undefined>): string {

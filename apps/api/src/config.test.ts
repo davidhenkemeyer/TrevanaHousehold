@@ -14,7 +14,7 @@ describe("lanRank (which address phones use to reach local photo storage)", () =
 describe("production configuration", () => {
   const good = {
     NODE_ENV: "production",
-    DATABASE_URL: "postgresql://u:p@db.example.com/titan",
+    DATABASE_URL: "postgresql://u:p@db.example.com/tenara",
     JWT_SECRET: "a-real-production-secret-of-at-least-32-chars",
     CORS_ORIGINS: "https://app.example.com",
     S3_ENDPOINT: "https://account.r2.cloudflarestorage.com",

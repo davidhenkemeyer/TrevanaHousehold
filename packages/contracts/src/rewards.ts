@@ -12,7 +12,7 @@ import {
   MONEY_CODES,
   REDEMPTION_STATUSES,
   REWARD_CURRENCIES,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import { idSchema, isoDateTimeSchema } from "./common.js";
 import { instanceSchema, personSchema } from "./instances.js";

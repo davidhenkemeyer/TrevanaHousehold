@@ -4,18 +4,18 @@
  * long-lived session). Native apps keep getting the token in the body and
  * store it in the OS keychain (SecureStore).
  *
- * A request is from the web app when it sends `X-Titan-Client: web`. That
+ * A request is from the web app when it sends `X-Tenara-Client: web`. That
  * header is also the CSRF guard: a cross-site form can't set headers, and a
  * cross-origin fetch that sets one is preflighted and refused by CORS for any
  * origin not in CORS_ORIGINS. On top of that the cookie is SameSite=Lax and
  * scoped to /v1/auth, so it only goes to refresh and logout.
  */
-import type { Tokens } from "@titan/contracts";
+import type { Tokens } from "@tenara/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { AppConfig } from "../config.js";
 
-export const WEB_CLIENT_HEADER = "x-titan-client";
-export const REFRESH_COOKIE = "titan_rt";
+export const WEB_CLIENT_HEADER = "x-tenara-client";
+export const REFRESH_COOKIE = "tenara_rt";
 const COOKIE_PATH = "/v1/auth";
 
 export function isWebClient(request: FastifyRequest): boolean {

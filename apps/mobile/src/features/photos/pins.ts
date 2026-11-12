@@ -3,7 +3,7 @@
  * photo. Positions are percentages of the photo's width and height, so pins
  * land in the same spot on any screen size.
  */
-import { type Annotations, annotationsSchema } from "@titan/contracts";
+import { type Annotations, annotationsSchema } from "@tenara/contracts";
 
 export type Pin = Annotations["pins"][number];
 

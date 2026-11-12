@@ -1,8 +1,8 @@
-# Titan Household: MVP Plan
+# Tenara Family: MVP Plan
 
 ## Context
 
-**Titan Household** ("Building Habits, Together.") is the family app in the Titan suite (with Titan Agile and Titan Focus; see [docs/titan-suite.md](titan-suite.md)). It's a family chore app that:
+**Tenara Family** ("Building Habits, Together.") is the family app in the Tenara suite (with Tenara Team and Tenara Focus; see [docs/tenara-suite.md](tenara-suite.md)). It's a family chore app that:
 
 - runs on iOS, Android, and the web (PC);
 - assigns recurring chores (daily, weekly, monthly, quarterly, annual) automatically, based on each member's capacity;
@@ -17,7 +17,7 @@ Inputs:
 
 - The original design doc (state machine, notification list, family/PIN model, REST resources).
 - The "Parent Verification & API Specification" doc (approval queue, submissions, rework vs. reject, checklists, golden-standard photos, photo mark-up, pending rewards). See [How the verification spec was adopted](#how-the-verification-spec-was-adopted).
-- The Titan Branding Suite doc (brand, design tokens, icon specs, and behavioral design principles). See [Titan branding and behavioral principles](#titan-branding-and-behavioral-principles).
+- The Branding Suite doc (brand, design tokens, icon specs, and behavioral design principles). See [Branding and behavioral principles](#branding-and-behavioral-principles).
 - Decisions made along the way: TypeScript backend, PostgreSQL, photo proof + rewards + push in the MVP, customizable rewards with a routine/extra-job default.
 
 Guiding rule: **all business logic lives on the server and in a shared domain package, never in the UI.** That way an Alexa skill becomes just another API client later.
@@ -203,15 +203,16 @@ Rules:
 - Shared chores split money and points as whole units (cents or points); any remainder goes to the first assignees by id. XP is not split: each assignee earns the full XP.
 - **Changing currency** never converts or erases anything. Every ledger entry records its currency, and old balances stay visible so a parent can settle them. XP and badges don't depend on the currency.
 
-### Titan branding and behavioral principles
+### Branding and behavioral principles
 
-Source: the Titan Branding Suite doc (`claude.md` links it).
+Source: the Branding Suite doc (`claude.md` links it).
 
-- **Brand**: Titan Household, tagline "Building Habits, Together." Accent colors Warm Amber `#D97706`, Soft Emerald `#059669`, Playful Sky Blue `#0284C7`, on the shared Slate neutrals (`#0F172A`, `#334155`, `#F1F5F9`, `#FFFFFF`).
+- **Name (changed November 2026)**: the suite was renamed from Titan to **Tenara**, because "Titan" is crowded and sounds too forceful for a gentle family product. Store titles: "Tenara Family: Chores & Habits", "Tenara Team: Tasks & Sprints", "Tenara Focus: Goals & Routines". The name under the icon is just "Tenara". The artwork didn't change. Details in [docs/tenara-suite.md](tenara-suite.md).
+- **Brand**: Tenara Family, tagline "Building Habits, Together." Accent colors Warm Amber `#D97706`, Soft Emerald `#059669`, Playful Sky Blue `#0284C7`, on the shared Slate neutrals (`#0F172A`, `#334155`, `#F1F5F9`, `#FFFFFF`).
 - **Type**: Inter for UI, Roboto Mono for chips, checklist indicators, and data. Scale: 36/24/20/16/12 px.
 - **Components**: buttons with 8 px radius (primary, secondary, ghost); cards with 12 px radius, 16 px padding, a soft shadow and a 1 px `#E2E8F0` border; pill-shaped badges in monospace; focus rings in the accent color.
 - **App icon**: the geometric "T" mark with a progress ring, on a 135° Amber → Emerald gradient, in a squircle with a 64 px safe zone on a 512 px canvas. Final icon files are needed before Step 11.
-- **Design tokens** live in a shared package, so Titan Agile and Titan Focus can reuse the structure with their own accent palettes.
+- **Design tokens** live in a shared package, so Tenara Team and Tenara Focus can reuse the structure with their own accent palettes.
 - **Behavioral principles adopted**:
   - Chores can carry an optional **situational cue** ("WHEN dinner finishes") shown on the card, in addition to the scheduled time.
   - Short checklists (3–5 steps): the editor suggests one for chores that have none.
@@ -270,7 +271,7 @@ Adapted rather than copied:
    - Late marking runs every 5 minutes: flags overdue outstanding chores once, records a system event, and calls the notification hook (filled in by Step 10).
    - Jobs run inside the API by default (`RUN_JOBS=true`) or in a separate worker process; pg-boss's singleton queues keep runs from overlapping across processes. `job:plan` and `job:mark-late` run them by hand.
 5. ✅ **App shell + Today view** (`apps/mobile`, Expo SDK 58)
-   - `@titan/tokens` design tokens and the app theme built on them. App name "Titan Household"; bundle ID placeholder `com.titansuite.household` (replace before Step 11). Icons exported from `assets/brand` to PNG.
+   - `@tenara/tokens` design tokens and the app theme built on them. App name "Tenara Family"; bundle ID placeholder (now `com.gettenara.family`, pending the domain). Icons exported from `assets/brand` to PNG.
    - Sign in, sign up, family onboarding, "Who's using this?", Family tab (add kids, PINs, kid phone setup, invite a parent), Me tab (quick-switch PIN, shared-device setting, sign out).
    - Today view: Needs attention / To do / Waiting for review / Done, a Mine/Family toggle, the day's progress ring, cue text on cards, one-tap completion (a checklist sheet when the chore has steps), confetti and a haptic tap. Buttons come from the API's `availableActions`.
    - Chore detail screen with steps, attempts, feedback, and history.
@@ -359,14 +360,14 @@ Adapted rather than copied:
       3. Optional: if "enhanced push security" is turned on for the Expo project, set `EXPO_ACCESS_TOKEN` for the API.
       4. Store builds (Step 11) need APNs and FCM credentials, which EAS can create.
 11. **Deploy + beta**
-    - Final app icons from the Titan icon set; trademark check on the "Titan" names before store listings.
+    - Final app icons from the icon set; trademark check on the "Tenara" names before store listings.
     - Deploy the API (container on Fly.io, Railway, or Render) with managed Postgres (Neon) and R2 storage. Set `S3_*` env vars, the bucket's CORS rule for the web origin, and a lifecycle rule as a backstop for the 90-day photo retention.
     - Deploy the web build as a static site.
     - Ship test builds through EAS: TestFlight for iOS, Play internal testing for Android.
     - **As built (code, no accounts):** the runbook for every account step is [deploy.md](deploy.md).
       - API container: `apps/api/Dockerfile` (Node 24, `pnpm deploy`, non-root) and an example `fly.toml`. Migrations run as the release command (`npm run db:deploy`). `/health` checks the database; `/health/live` doesn't.
       - Production config checks: the API refuses to start with development secrets, missing or non-https `CORS_ORIGINS`, or a missing or non-https `S3_PUBLIC_URL`. `TRUST_PROXY` is for the host's proxy.
-      - Web sign-in: the refresh token is an httpOnly, SameSite=Lax cookie scoped to `/v1/auth`, for requests marked `X-Titan-Client: web` (that header is also the CSRF guard). The web app keeps no tokens in `localStorage`. Native apps are unchanged.
+      - Web sign-in: the refresh token is an httpOnly, SameSite=Lax cookie scoped to `/v1/auth`, for requests marked `X-Tenara-Client: web` (that header is also the CSRF guard). The web app keeps no tokens in `localStorage`. Native apps are unchanged.
       - Photo bucket: `storage:setup` applies the CORS rule and lifecycle rules (submission photos expire after 120 days as a backstop). Keys now start with the purpose (`submission/families/...`) so the rule can match them.
       - Push delivery receipts: checked every 15 minutes; dead tokens are removed.
       - App: `eas.json` profiles, `EAS_PROJECT_ID`, `usesNonExemptEncryption: false`, `expo-dev-client`, and an SPA fallback for the static web host.

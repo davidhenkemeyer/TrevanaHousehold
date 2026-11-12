@@ -14,7 +14,7 @@ import { Platform } from "react-native";
 import type { Api } from "../../api/endpoints";
 import { kv } from "../../lib/kv";
 
-const TOKEN_KEY = "titan.push.token";
+const TOKEN_KEY = "tenara.push.token";
 
 // Show notifications that arrive while the app is open, too.
 Notifications.setNotificationHandler({
@@ -39,7 +39,7 @@ export async function registerForPush(api: Api): Promise<boolean> {
   if (!id) return false; // needs `eas init`; see docs/mvp-plan.md (Step 10)
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      name: "Titan Household",
+      name: "Tenara Family",
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }

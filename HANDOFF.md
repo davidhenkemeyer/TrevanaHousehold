@@ -1,33 +1,34 @@
-# Handoff: Titan Household
+# Handoff: Tenara Family
 
-State as of 11 Nov 2026, on `main` (pushed to `origin`, https://github.com/davidhenkemeyer/TitanHousehold).
+State as of 11 Nov 2026, on `main` (`origin` is https://github.com/davidhenkemeyer/TitanHousehold; the GitHub repo still has the old name, and the Step 11 and rename commits aren't pushed yet).
 
-Titan Household is a family chore and habit app for iOS, Android, and the web. It's the first app of the Titan suite. Start with these:
+Tenara Family is a family chore and habit app for iOS, Android, and the web. It's the first app of the Tenara suite. Start with these:
 
 - [CLAUDE.md](CLAUDE.md): stack, architecture rules, layout, commands, and conventions. **Read this first.**
 - [docs/mvp-plan.md](docs/mvp-plan.md): data model, state machine, rules, the roadmap with "as built" notes per step, and every product decision made so far.
-- [docs/titan-suite.md](docs/titan-suite.md): what the other Titan apps will share, and the Titan Focus AI-coach design.
+- [docs/tenara-suite.md](docs/tenara-suite.md): what the other Tenara apps will share, and the Tenara Focus AI-coach design.
 - [docs/deploy.md](docs/deploy.md): the deploy and beta runbook (accounts, secrets, store builds).
 
 ## What's done
 
 Roadmap Steps 0–10 are built, tested, and committed, and Step 11 is done as far as code goes. One or more commits per step:
 
-| Step | What it added                                                                                                             | Commit(s)                                                               |
-| ---- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 0    | Monorepo (pnpm, Turborepo), lint/format/typecheck, docker-compose, CI                                                     | `0c51fea`                                                               |
-| 1    | Domain core: recurrence, chore state machine, capacity-based scheduling                                                   | `29ff9b4`                                                               |
-| 2    | API foundation: database, auth, families, kid profiles with PINs, invites                                                 | `9fc84c6`                                                               |
-| 3    | Chores, planning, submissions, reviews (with the verification spec adopted in `d87a515`)                                  | `5f6fa9d`                                                               |
-| —    | Rename to Titan Household, branding, icon SVGs                                                                            | `2428452`, `d0ccfe0`                                                    |
-| 4    | Background jobs: rolling planning, late marking                                                                           | `afe8169`                                                               |
-| 5    | The app: sign-in, Today view, kid-phone pairing, shared-device mode                                                       | `00ee56f`, `20f6768`                                                    |
-| 6    | Parent tools: chore editor, review queue (swipe), week view, daily time                                                   | `7fc63b4`, `3d81ca5`                                                    |
-| 7    | Photo proof, reference photos, pin mark-up, 90-day photo cleanup                                                          | `4fd7a64`                                                               |
-| 8    | Rewards: money or points, ledger, payouts, catalog, redemptions, job board                                                | `291135b`                                                               |
-| 9    | XP, levels, streaks with saves, badges, family goal                                                                       | `de8500e`                                                               |
-| 10   | Notifications: in-app inbox, 7:30 AM daily digest, instant pushes, settings                                               | `8b1417f`                                                               |
-| 11   | Deploy prep (code only): container, production config checks, web cookie sign-in, bucket setup, push receipts, EAS config | `9658555`, `6f1f84b`, `17ae521`, `6b6b1a8`, plus the CI and docs commit |
+| Step | What it added                                                                                                             | Commit(s)                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 0    | Monorepo (pnpm, Turborepo), lint/format/typecheck, docker-compose, CI                                                     | `0c51fea`                                             |
+| 1    | Domain core: recurrence, chore state machine, capacity-based scheduling                                                   | `29ff9b4`                                             |
+| 2    | API foundation: database, auth, families, kid profiles with PINs, invites                                                 | `9fc84c6`                                             |
+| 3    | Chores, planning, submissions, reviews (with the verification spec adopted in `d87a515`)                                  | `5f6fa9d`                                             |
+| —    | Rename to Titan Household, branding, icon SVGs                                                                            | `2428452`, `d0ccfe0`                                  |
+| 4    | Background jobs: rolling planning, late marking                                                                           | `afe8169`                                             |
+| 5    | The app: sign-in, Today view, kid-phone pairing, shared-device mode                                                       | `00ee56f`, `20f6768`                                  |
+| 6    | Parent tools: chore editor, review queue (swipe), week view, daily time                                                   | `7fc63b4`, `3d81ca5`                                  |
+| 7    | Photo proof, reference photos, pin mark-up, 90-day photo cleanup                                                          | `4fd7a64`                                             |
+| 8    | Rewards: money or points, ledger, payouts, catalog, redemptions, job board                                                | `291135b`                                             |
+| 9    | XP, levels, streaks with saves, badges, family goal                                                                       | `de8500e`                                             |
+| 10   | Notifications: in-app inbox, 7:30 AM daily digest, instant pushes, settings                                               | `8b1417f`                                             |
+| 11   | Deploy prep (code only): container, production config checks, web cookie sign-in, bucket setup, push receipts, EAS config | `9658555`, `6f1f84b`, `17ae521`, `6b6b1a8`, `87a38c2` |
+| —    | Rename Titan to Tenara: Tenara Family (this app), Tenara Team, Tenara Focus; `@tenara/*` packages; artwork unchanged      | the rename commit                                     |
 
 Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and API tests (domain 224, API 205, app 69, contracts 5, tokens 4) and 8 Playwright web tests pass. The production Docker image was built and run locally against Postgres with `NODE_ENV=production`: migrations, `/health`, sign-up, and a clean SIGTERM shutdown all work. GitHub Actions passed on the earlier pushes; it now also builds the Docker image and the web export.
 
@@ -40,11 +41,11 @@ Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and 
 
 **Needs the owner's accounts or decisions** (in the order of docs/deploy.md):
 
-1. Pick a domain, with the web app and the API under it (the sign-in cookie needs a shared parent domain), and the bundle ID (`com.<domain>.household`; still the placeholder `com.titansuite.household`).
+1. Pick a domain, with the web app and the API under it (the sign-in cookie needs a shared parent domain), and confirm the bundle ID (the code assumes `com.gettenara.family`).
 2. Neon, R2 or S3 (then `storage:setup`), Fly.io (`fly launch`, secrets, `fly deploy`), and Cloudflare Pages.
 3. Expo: `eas init` to get the project id, then set `EAS_PROJECT_ID` and the API URL in `eas.json`.
 4. Apple Developer and Google Play accounts, then TestFlight and internal testing builds through EAS.
-5. Before listings: final icons, a trademark check on "Titan", a privacy policy, and the store privacy forms.
+5. Before listings: final icons, a trademark check on "Tenara" (see docs/deploy.md step 9), a privacy policy, and the store privacy forms.
 
 **Known gaps and small follow-ups:**
 

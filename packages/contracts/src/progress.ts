@@ -3,7 +3,7 @@
  * Everyone can see the family goal; kids see only their own progress
  * (there's no leaderboard).
  */
-import { MAX_GOAL_XP } from "@titan/domain";
+import { MAX_GOAL_XP } from "@tenara/domain";
 import { z } from "zod";
 import { idSchema, isoDateTimeSchema } from "./common.js";
 import { personSchema } from "./instances.js";

@@ -1,5 +1,5 @@
 {
-  "name": "@titan/contracts",
+  "name": "@tenara/contracts",
   "version": "0.0.0",
   "private": true,
   "description": "Zod request/response schemas shared by the API and its clients (app, Alexa).",
@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@titan/domain": "workspace:*",
+    "@tenara/domain": "workspace:*",
     "zod": "4.6.7"
   }
 }

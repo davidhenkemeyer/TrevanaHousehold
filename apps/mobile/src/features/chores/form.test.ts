@@ -1,5 +1,5 @@
-import type { Chore } from "@titan/contracts";
-import type { PlainDate } from "@titan/domain";
+import type { Chore } from "@tenara/contracts";
+import type { PlainDate } from "@tenara/domain";
 import { describe, expect, it } from "vitest";
 import {
   type ChoreForm,

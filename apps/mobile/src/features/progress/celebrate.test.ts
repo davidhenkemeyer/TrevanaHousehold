@@ -1,4 +1,4 @@
-import type { MemberProgress } from "@titan/contracts";
+import type { MemberProgress } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { levelLine, parseSeen, seenNow, whatsNew } from "./celebrate";
 

@@ -1,8 +1,8 @@
 /**
- * The app's building blocks, styled from the Titan tokens (Branding Suite §7.4):
+ * The app's building blocks, styled from the Tenara tokens (Branding Suite §7.4):
  * buttons (8 px radius; primary / secondary / ghost), cards (12 px radius,
  * 16 px padding, soft shadow, 1 px border), pill badges in monospace, and
- * text in the Titan type scale. Screens compose these instead of styling
+ * text in the Tenara type scale. Screens compose these instead of styling
  * from scratch, so the look stays consistent.
  */
 import { type ReactNode, useState } from "react";

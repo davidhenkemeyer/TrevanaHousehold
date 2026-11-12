@@ -3,7 +3,7 @@
 # Secrets (DATABASE_URL, JWT_SECRET, S3_*, CORS_ORIGINS) are set with
 # `fly secrets set`, never here.
 
-app = "titan-household-api" # change to your Fly app name
+app = "tenara-api" # change to your Fly app name
 primary_region = "ord"      # pick the region closest to your families and database
 
 [build]

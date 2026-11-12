@@ -3,7 +3,7 @@
  * batch-approve results into words. The server decides what's eligible
  * (`batchEligible`) and checks it again on approval.
  */
-import type { BatchApproveResponse, ReviewQueueItem } from "@titan/contracts";
+import type { BatchApproveResponse, ReviewQueueItem } from "@tenara/contracts";
 
 export interface QueueGroup {
   membershipId: string;

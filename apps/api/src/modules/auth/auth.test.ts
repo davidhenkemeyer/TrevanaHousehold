@@ -1,4 +1,4 @@
-import type { MeResponse } from "@titan/contracts";
+import type { MeResponse } from "@tenara/contracts";
 import type { IssuedTokens } from "./sessions.js";
 import { describe, expect, it } from "vitest";
 import { PASSWORD, days, minutes, useTestApp } from "../../test/harness.js";

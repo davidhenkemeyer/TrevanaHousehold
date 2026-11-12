@@ -4,8 +4,8 @@ import type {
   SignupBody,
   UpdateMeBody,
   User as UserDto,
-} from "@titan/contracts";
-import { defaultAvatarColor } from "@titan/domain";
+} from "@tenara/contracts";
+import { defaultAvatarColor } from "@tenara/domain";
 import type { Deps } from "../../deps.js";
 import { conflict, isUniqueViolation, notFound, unauthorized } from "../../errors.js";
 import { hashSecret, verifyAgainstDummy, verifySecret } from "../../lib/secrets.js";

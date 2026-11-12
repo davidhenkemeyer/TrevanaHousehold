@@ -5,7 +5,7 @@ import type {
   NotificationSettings,
   RewardItem,
   SubmitResponse,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { markLateInstances } from "../../jobs/lateness.js";
 import {

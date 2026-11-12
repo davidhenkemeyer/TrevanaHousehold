@@ -27,7 +27,7 @@ import {
   applyAction,
   shouldExpireOpen,
   xpFor,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { AppError, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
 import { onTransition } from "../notifications/hooks.js";

@@ -1,4 +1,4 @@
-import type { FamilyGoal, Instance, Member, Progress, SubmitResponse } from "@titan/contracts";
+import type { FamilyGoal, Instance, Member, Progress, SubmitResponse } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { type Session, days, minutes, useTestApp } from "../../test/harness.js";
 

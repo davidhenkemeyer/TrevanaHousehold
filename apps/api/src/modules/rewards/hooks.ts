@@ -14,7 +14,7 @@
  * Unique constraints plus `skipDuplicates` make every step safe to repeat.
  * XP and badges are recorded even when the family hides them.
  */
-import { earnedBadges, earnings, goalProgress } from "@titan/domain";
+import { earnedBadges, earnings, goalProgress } from "@tenara/domain";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { everyoneIn, notify } from "../notifications/service.js";
 import { memberHistory } from "../progress/history.js";

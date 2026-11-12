@@ -1,7 +1,7 @@
-import { themeFor } from "@titan/tokens";
+import { themeFor } from "@tenara/tokens";
 
-/** The app's theme: Titan Household palette on the shared Titan tokens. */
-export const theme = themeFor("household");
+/** The app's theme: Tenara Family palette on the shared Tenara tokens. */
+export const theme = themeFor("family");
 export const { colors, typography, spacing, radii, shadows, interaction } = theme;
 
 /** Card shadow for both native (shadow* / elevation) and web (boxShadow). */

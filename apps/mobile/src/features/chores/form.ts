@@ -13,7 +13,7 @@ import {
   type Member,
   type UpdateChoreBody,
   createChoreBodySchema,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import {
   type AssignMode,
   type ChoreKind,
@@ -24,7 +24,7 @@ import {
   DEFAULT_TIME_OF_DAY,
   toParts,
   weekdayOf,
-} from "@titan/domain";
+} from "@tenara/domain";
 
 const MINUTES_PER_DAY = 24 * 60;
 

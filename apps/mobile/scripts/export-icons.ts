@@ -1,13 +1,13 @@
 /**
- * Renders the brand SVGs in assets/brand/titan-household to the PNG files
- * Expo needs. Run after changing an icon: `pnpm --filter @titan/mobile icons`.
+ * Renders the brand SVGs in assets/brand/tenara-family to the PNG files
+ * Expo needs. Run after changing an icon: `pnpm --filter @tenara/mobile icons`.
  * The generated PNGs are committed, so builds don't need this step.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 
-const brandDir = fileURLToPath(new URL("../../../assets/brand/titan-household/", import.meta.url));
+const brandDir = fileURLToPath(new URL("../../../assets/brand/tenara-family/", import.meta.url));
 const outDir = fileURLToPath(new URL("../assets/generated/", import.meta.url));
 mkdirSync(outDir, { recursive: true });
 

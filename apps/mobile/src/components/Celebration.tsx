@@ -6,15 +6,10 @@
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useRef } from "react";
 import { Animated, Dimensions, Easing, Platform, StyleSheet, View } from "react-native";
-import { accents } from "@titan/tokens";
+import { accents } from "@tenara/tokens";
 
 const PIECES = 36;
-const COLORS = [
-  accents.household.amber,
-  accents.household.emerald,
-  accents.household.sky,
-  "#F59E0B",
-];
+const COLORS = [accents.family.amber, accents.family.emerald, accents.family.sky, "#F59E0B"];
 
 export function Celebration({ burstKey, onDone }: { burstKey: number; onDone?: () => void }) {
   const progress = useRef(new Animated.Value(0)).current;

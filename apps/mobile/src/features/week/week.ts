@@ -11,7 +11,7 @@ import {
   addDays,
   toParts,
   weekdayOf,
-} from "@titan/domain";
+} from "@tenara/domain";
 
 /** How full the bar is, 0–1. A day off with any work shows as full. */
 export function loadFraction(assigned: number, capacity: number): number {

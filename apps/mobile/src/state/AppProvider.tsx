@@ -3,7 +3,7 @@
  * (personal or shared), and the current family. Screens use the hooks below.
  */
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import type { AuthResponse, Member, MeResponse } from "@titan/contracts";
+import type { AuthResponse, Member, MeResponse } from "@tenara/contracts";
 import {
   type ReactNode,
   createContext,

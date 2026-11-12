@@ -6,7 +6,7 @@
  * becomes HIGH. Each instance is flagged once, records a system event in its
  * history, and triggers the "chore is late" notification hook.
  */
-import { LATE_ELIGIBLE_STATUSES, shouldMarkLate } from "@titan/domain";
+import { LATE_ELIGIBLE_STATUSES, shouldMarkLate } from "@tenara/domain";
 import type { FastifyBaseLogger } from "fastify";
 import type { Deps } from "../deps.js";
 import { expireOpenInstance } from "../modules/instances/transitions.js";

@@ -2,7 +2,7 @@
  * Turns the agenda into the Today view's sections. Pure logic, unit-tested.
  * Order within a section is the API's (effective priority, then due time).
  */
-import type { Instance } from "@titan/contracts";
+import type { Instance } from "@tenara/contracts";
 
 export type SectionKey = "attention" | "todo" | "review" | "done";
 export type Scope = "mine" | "family";

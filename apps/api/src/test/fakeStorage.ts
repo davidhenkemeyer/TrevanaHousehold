@@ -12,7 +12,7 @@ export interface FakeStorage extends PhotoStorage {
   deleted: string[];
 }
 
-export const FAKE_UPLOAD_URL = "https://storage.test/titan-photos";
+export const FAKE_UPLOAD_URL = "https://storage.test/tenara-photos";
 
 export function createFakeStorage(): FakeStorage {
   const objects = new Map<string, StoredObject>();

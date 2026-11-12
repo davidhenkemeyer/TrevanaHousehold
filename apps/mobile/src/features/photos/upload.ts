@@ -8,7 +8,7 @@
  * chore's reference photo). Re-encoding also drops the photo's metadata,
  * such as where it was taken.
  */
-import type { UploadPurpose } from "@titan/contracts";
+import type { UploadPurpose } from "@tenara/contracts";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { Platform } from "react-native";
@@ -32,7 +32,7 @@ export async function pickPhoto(source: "camera" | "library"): Promise<PickedPho
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       throw new PhotoError(
-        "Titan Household needs the camera for this. You can allow it in Settings.",
+        "Tenara Family needs the camera for this. You can allow it in Settings.",
       );
     }
   }

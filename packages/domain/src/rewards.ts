@@ -6,7 +6,7 @@
  * never stored: a member's balance is the sum of their ledger entries in
  * that currency, so there's nothing to drift out of sync.
  *
- * Product rules (Titan branding doc):
+ * Product rules (branding doc):
  *   - Earned rewards are never taken away as punishment. The only negative
  *     entries are payouts, redemptions, and CORRECTIONs of genuine mistakes,
  *     which always carry a note.

@@ -17,8 +17,8 @@ import type {
   Member,
   UpdateFamilyBody,
   UpdateMemberBody,
-} from "@titan/contracts";
-import { defaultAvatarColor, defaultWeeklyCapacity } from "@titan/domain";
+} from "@tenara/contracts";
+import { defaultAvatarColor, defaultWeeklyCapacity } from "@tenara/domain";
 import type { Deps } from "../../deps.js";
 import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from "../../errors.js";
 import type { Prisma } from "../../generated/prisma/client.js";

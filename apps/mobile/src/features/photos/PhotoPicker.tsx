@@ -5,7 +5,7 @@
  *
  * Controlled: the parent screen owns the list (see `readyUploadIds`).
  */
-import type { UploadPurpose } from "@titan/contracts";
+import type { UploadPurpose } from "@tenara/contracts";
 import { ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { AppText, Button } from "../../components/ui";
 import { useApi, useFamily } from "../../state/AppProvider";

@@ -10,8 +10,8 @@ import type {
   FamilyGoal as FamilyGoalDto,
   MemberProgress,
   Progress,
-} from "@titan/contracts";
-import { BADGES, MASTERY_BADGE, goalProgress, isMasteryKey, levelFor } from "@titan/domain";
+} from "@tenara/contracts";
+import { BADGES, MASTERY_BADGE, goalProgress, isMasteryKey, levelFor } from "@tenara/domain";
 import type { Deps } from "../../deps.js";
 import type { FamilyGoal } from "../../generated/prisma/client.js";
 import { requireMember, requireParent } from "../access.js";

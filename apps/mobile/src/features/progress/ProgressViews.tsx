@@ -3,7 +3,7 @@
  * bar and streak, and the badge grid (earned in color, the rest greyed with
  * what it takes to earn them).
  */
-import type { BadgeDefinition, FamilyGoal, MemberProgress } from "@titan/contracts";
+import type { BadgeDefinition, FamilyGoal, MemberProgress } from "@tenara/contracts";
 import { StyleSheet, View } from "react-native";
 import { AppText, Card } from "../../components/ui";
 import { colors, radii, spacing } from "../../theme";

@@ -1,4 +1,4 @@
-import type { LedgerEntry } from "@titan/contracts";
+import type { LedgerEntry } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import {
   amountFormatter,

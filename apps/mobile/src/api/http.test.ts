@@ -99,6 +99,6 @@ describe("http client", () => {
     await client.request("POST", "/v1/auth/refresh", {}, { auth: false });
     const init = fetch.mock.calls[0]?.[1];
     expect(init?.credentials).toBe("include");
-    expect((init?.headers as Record<string, string>)["x-titan-client"]).toBe("web");
+    expect((init?.headers as Record<string, string>)["x-tenara-client"]).toBe("web");
   });
 });

@@ -3,7 +3,7 @@
  * `availableActions` (computed by the API from the domain rules), so the app
  * never decides on its own what someone may do.
  */
-import type { Instance } from "@titan/contracts";
+import type { Instance } from "@tenara/contracts";
 import { Pressable, View } from "react-native";
 import { AppText, Avatar, Button, Card, Chip } from "../../components/ui";
 import { colors, spacing } from "../../theme";

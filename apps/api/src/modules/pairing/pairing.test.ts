@@ -1,4 +1,4 @@
-import type { AuthResponse, Member, MeResponse, PairingCodeResponse } from "@titan/contracts";
+import type { AuthResponse, Member, MeResponse, PairingCodeResponse } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { type Session, minutes, useTestApp } from "../../test/harness.js";
 

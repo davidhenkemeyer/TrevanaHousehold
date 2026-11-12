@@ -13,7 +13,7 @@ import {
   MAX_PHOTO_BYTES,
   type PHOTO_CONTENT_TYPES,
   type UploadPurpose,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import type { Deps } from "../../deps.js";
 import { badRequest, conflict, forbidden } from "../../errors.js";
 import type { Membership } from "../../generated/prisma/client.js";

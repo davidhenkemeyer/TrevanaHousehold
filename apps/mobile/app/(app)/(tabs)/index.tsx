@@ -4,7 +4,7 @@
  * completed chore.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Instance } from "@titan/contracts";
+import type { Instance } from "@tenara/contracts";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, RefreshControl, View } from "react-native";

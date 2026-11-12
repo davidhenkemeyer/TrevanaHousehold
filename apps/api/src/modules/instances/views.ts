@@ -8,8 +8,8 @@ import type {
   Person,
   Review as ReviewDto,
   Submission as SubmissionDto,
-} from "@titan/contracts";
-import { type Role, availableActions, effectivePriority, xpFor } from "@titan/domain";
+} from "@tenara/contracts";
+import { type Role, availableActions, effectivePriority, xpFor } from "@tenara/domain";
 import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { Deps } from "../../deps.js";

@@ -6,7 +6,7 @@
  * Uses React Native's own PanResponder (no extra native dependency); it only
  * claims clearly horizontal drags, so vertical scrolling still works.
  */
-import type { ReviewQueueItem } from "@titan/contracts";
+import type { ReviewQueueItem } from "@tenara/contracts";
 import { useEffect, useMemo, useRef } from "react";
 import { Animated, PanResponder, Pressable, StyleSheet, View } from "react-native";
 import { AppText, Avatar, Button, Card, Chip } from "../../components/ui";

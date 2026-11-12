@@ -2,13 +2,13 @@
  * Notification settings and inbox helpers: which kinds each person sees in
  * settings, how they're described, and where tapping a notification goes.
  */
-import type { Notification } from "@titan/contracts";
+import type { Notification } from "@tenara/contracts";
 import {
   NOTIFICATION_INFO,
   NOTIFICATION_TYPES,
   type NotificationType,
   type Role,
-} from "@titan/domain";
+} from "@tenara/domain";
 
 /** Kinds that matter to this person: kids don't review chores or approve rewards. */
 export function typesFor(role: Role): NotificationType[] {

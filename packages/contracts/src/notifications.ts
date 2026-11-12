@@ -2,7 +2,7 @@
  * Notifications: the in-app inbox, per-person settings, and registering a
  * phone for push. Pushes themselves are sent by the server's background jobs.
  */
-import { DELIVERIES, NOTIFICATION_TYPES } from "@titan/domain";
+import { DELIVERIES, NOTIFICATION_TYPES } from "@tenara/domain";
 import { z } from "zod";
 import { idSchema, isoDateTimeSchema } from "./common.js";
 

@@ -4,7 +4,7 @@
  * Rework is the default; rejecting is for work that wasn't really done.
  * With a photo, the parent can also drop numbered pins on it ("mark up").
  */
-import type { Annotations, ReviewBody } from "@titan/contracts";
+import type { Annotations, ReviewBody } from "@tenara/contracts";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Segmented, Sheet } from "../../components/forms";

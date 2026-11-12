@@ -6,7 +6,7 @@
  * one refresh ("single flight") instead of each burning a refresh token, which
  * the API would treat as theft (refresh tokens are single-use).
  */
-import type { AuthResponse, Tokens, User } from "@titan/contracts";
+import type { AuthResponse, Tokens, User } from "@tenara/contracts";
 import { ApiError } from "../api/http";
 
 export interface StoredSession {

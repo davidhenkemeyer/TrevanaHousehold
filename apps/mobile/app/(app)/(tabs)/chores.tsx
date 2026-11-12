@@ -7,13 +7,13 @@
  *    can spot overloaded days and fix them (edit a chore or someone's time).
  */
 import { useQuery } from "@tanstack/react-query";
-import { type Member, toRecurrenceRule } from "@titan/contracts";
+import { type Member, toRecurrenceRule } from "@tenara/contracts";
 import {
   type PlainDate,
   describeRecurrence,
   instantToPlainDate,
   minutesPerAssignee,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -78,7 +78,7 @@ function ChoreList() {
         <Card style={{ alignItems: "center", gap: spacing.sm }}>
           <AppText variant="h2">No chores yet</AppText>
           <AppText color={colors.textMuted} style={{ textAlign: "center" }}>
-            Add the first one: dishes, feeding the dog, making beds. Titan Household spreads them
+            Add the first one: dishes, feeding the dog, making beds. Tenara Family spreads them
             across the family by how much time everyone has.
           </AppText>
         </Card>

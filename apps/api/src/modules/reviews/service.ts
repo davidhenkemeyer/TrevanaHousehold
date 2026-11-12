@@ -7,8 +7,8 @@ import type {
   ReviewBody,
   ReviewQueue,
   ReviewResponse,
-} from "@titan/contracts";
-import { REVIEW_DECISION_ACTION, canBatchApprove } from "@titan/domain";
+} from "@tenara/contracts";
+import { REVIEW_DECISION_ACTION, canBatchApprove } from "@tenara/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { AppError, badRequest, conflict, notFound } from "../../errors.js";

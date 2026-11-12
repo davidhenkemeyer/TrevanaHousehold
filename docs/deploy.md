@@ -1,4 +1,4 @@
-# Deploying Titan Household
+# Deploying Tenara Family
 
 This runbook covers putting the API, database, photo storage, and web app online, and shipping test builds to phones. The code is ready for every step here; each step needs an account, a payment, or a decision, so it's done by the owner. Steps are in order, and each lists what it produces for the next one.
 
@@ -18,7 +18,7 @@ Recommended setup for the beta (any equivalent works, since the API is a plain c
 ## 0. Decisions to make first
 
 1. **Domain.** Put the web app and the API under one domain, such as `app.<domain>` and `api.<domain>`. The web app's sign-in cookie only works reliably when both share a parent domain; Safari blocks cookies between unrelated domains such as `*.fly.dev` and `*.pages.dev`.
-2. **Bundle ID.** Usually `com.<domain>.household`. It can't change after the first store release. Set `BUNDLE_ID` in [apps/mobile/app.config.ts](../apps/mobile/app.config.ts).
+2. **Bundle ID.** Usually `com.<domain>.family`; the code assumes `com.gettenara.family`. It can't change after the first store release. Set `BUNDLE_ID` in [apps/mobile/app.config.ts](../apps/mobile/app.config.ts).
 3. **Photo uploads on R2.** The app uploads photos with presigned POST forms, which AWS S3 supports and Cloudflare R2 doesn't. Either use S3, or have the code switched to presigned PUT uploads first. That switch is small, and CORS already allows PUT.
 
 ## 1. Database (Neon)
@@ -35,7 +35,7 @@ Produces: `DATABASE_URL`.
 
 ## 3. Photo storage (R2 or S3)
 
-1. Create a private bucket named `titan-photos` (never public: photos are only reached through signed URLs).
+1. Create a private bucket named `tenara-photos` (never public: photos are only reached through signed URLs).
 2. Create an API token or access key that can read and write that bucket only.
 3. Endpoint and region: on R2, the endpoint is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` and the region is `auto`. On S3, the endpoint is `https://s3.<region>.amazonaws.com` and the region is your bucket's region.
 4. Apply the bucket's CORS and lifecycle rules once, from this computer:
@@ -58,7 +58,7 @@ The image is built from [apps/api/Dockerfile](../apps/api/Dockerfile), and [fly.
 ```sh
 fly launch --no-deploy --copy-config   # from the repo root; pick an app name and region, then update fly.toml
 fly secrets set DATABASE_URL=... JWT_SECRET=... CORS_ORIGINS=https://app.<domain> \
-  S3_ENDPOINT=... S3_PUBLIC_URL=... S3_BUCKET=titan-photos S3_REGION=auto \
+  S3_ENDPOINT=... S3_PUBLIC_URL=... S3_BUCKET=tenara-photos S3_REGION=auto \
   S3_ACCESS_KEY=... S3_SECRET_KEY=...
 fly deploy                             # runs `npm run db:deploy` (migrations) before switching over
 fly certs add api.<domain>             # then add the DNS record Fly shows
@@ -75,7 +75,7 @@ Notes:
 ## 5. Web app (Cloudflare Pages)
 
 1. Create a Pages project connected to the GitHub repository.
-2. Build command: `pnpm install --frozen-lockfile && pnpm --filter @titan/mobile export:web`. Output directory: `apps/mobile/dist`. Environment: `EXPO_PUBLIC_API_URL=https://api.<domain>` and `NODE_VERSION=24`.
+2. Build command: `pnpm install --frozen-lockfile && pnpm --filter @tenara/mobile export:web`. Output directory: `apps/mobile/dist`. Environment: `EXPO_PUBLIC_API_URL=https://api.<domain>` and `NODE_VERSION=24`.
 3. Add the custom domain `app.<domain>`.
 4. Check: sign up on the web app, reload, and confirm you stay signed in. Deep links like `/chore/<id>` load thanks to `public/_redirects`.
 
@@ -101,8 +101,8 @@ Notes:
 
 ## 9. Before public store listings
 
-- **Icons:** final icons from the Titan icon set go in `assets/brand/titan-household/`; then run `pnpm --filter @titan/mobile icons`.
-- **Name:** do a trademark search on "Titan Household" and "Titan" (USPTO; classes 9 and 42) before listings and marketing.
+- **Icons:** final icons from the icon set go in `assets/brand/tenara-family/`; then run `pnpm --filter @tenara/mobile icons`.
+- **Name:** do a trademark search on "Tenara" and "Tenara Family" (USPTO; classes 9 and 42) before listings and marketing. Ask about two filings found in November 2026: a UK application for TENARA (UK00004255778, classes 36 and 42, owner not shown) and a pending US application for TENARAI (serial 99585021, Infogain, classes 35 and 42).
 - **Privacy policy:** a public URL is required by both stores. The app stores children's names and photos, so the policy should cover what's collected, who sees it (only the family), photo deletion after 90 days, and how to delete an account. Apple's Kids category is optional and adds rules (no third-party analytics or ads); the app doesn't need to be in it.
 - **Store privacy forms:** App Store "App Privacy" and Play "Data safety". The app collects names, email addresses (parents), photos, and push tokens, with no tracking and no ads.
 

@@ -685,7 +685,7 @@ test("web sign-in keeps no tokens in page storage and survives a reload", async 
   // The refresh token is an httpOnly cookie; page storage holds no token.
   // The cookie is scoped to the API's /v1/auth path.
   const cookies = await page.context().cookies(`${API}/v1/auth/refresh`);
-  const refresh = cookies.find((c) => c.name === "titan_rt");
+  const refresh = cookies.find((c) => c.name === "tenara_rt");
   expect(refresh?.httpOnly).toBe(true);
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
   expect(stored).not.toContain(refresh!.value);

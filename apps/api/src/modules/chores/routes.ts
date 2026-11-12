@@ -6,7 +6,7 @@ import {
   createChoreBodySchema,
   familyParamsSchema,
   updateChoreBodySchema,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";

@@ -6,7 +6,7 @@
  * on each person's rewards page until a parent settles them.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MONEY_CODES, type MoneyCode, type RewardCurrency } from "@titan/domain";
+import { MONEY_CODES, type MoneyCode, type RewardCurrency } from "@tenara/domain";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";

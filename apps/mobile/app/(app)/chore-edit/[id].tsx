@@ -8,7 +8,7 @@
  * the API's own schema (features/chores/form.ts); the server has the final say.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Chore, Member } from "@titan/contracts";
+import type { Chore, Member } from "@tenara/contracts";
 import {
   FREQUENCIES,
   type Frequency,
@@ -23,7 +23,7 @@ import {
   ordinal,
   weekdayOf,
   xpFor,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";

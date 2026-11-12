@@ -1,4 +1,4 @@
-import type { Chore, ChoreList, InstanceList, Member } from "@titan/contracts";
+import type { Chore, ChoreList, InstanceList, Member } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CHORE, type Session, useTestApp } from "../../test/harness.js";
 

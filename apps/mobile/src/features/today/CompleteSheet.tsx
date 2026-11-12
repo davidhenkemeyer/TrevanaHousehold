@@ -4,7 +4,7 @@
  * When the chore needs a photo, "Done" waits for one; the API checks too.
  * A reference photo, if the chore has one, shows what "done" looks like.
  */
-import { MAX_SUBMISSION_PHOTOS, type Instance } from "@titan/contracts";
+import { MAX_SUBMISSION_PHOTOS, type Instance } from "@tenara/contracts";
 import { useEffect, useState } from "react";
 import { Modal, ScrollView, View } from "react-native";
 import { AppText, Button, Card, Checkbox, ErrorText } from "../../components/ui";

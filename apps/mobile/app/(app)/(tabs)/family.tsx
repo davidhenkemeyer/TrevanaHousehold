@@ -4,7 +4,7 @@
  * this device to someone.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Member } from "@titan/contracts";
+import type { Member } from "@tenara/contracts";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Modal, View } from "react-native";
@@ -263,7 +263,7 @@ export default function Family() {
           <Card style={{ gap: spacing.lg, alignItems: "center", maxWidth: 420 }}>
             <AppText variant="h2">{`Set up ${pairing?.name ?? ""}'s phone`}</AppText>
             <AppText color={colors.textMuted} style={{ textAlign: "center" }}>
-              On their phone, open Titan Household, tap "Setting up a kid's phone?", and enter:
+              On their phone, open Tenara Family, tap "Setting up a kid's phone?", and enter:
             </AppText>
             <AppText
               variant="display"

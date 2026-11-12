@@ -9,8 +9,8 @@ import type {
   CreateInviteBody,
   CreateInviteResponse,
   InviteList,
-} from "@titan/contracts";
-import { defaultWeeklyCapacity } from "@titan/domain";
+} from "@tenara/contracts";
+import { defaultWeeklyCapacity } from "@tenara/domain";
 import type { Deps } from "../../deps.js";
 import { badRequest, conflict, forbidden, notFound } from "../../errors.js";
 import { randomToken, sha256 } from "../../lib/secrets.js";

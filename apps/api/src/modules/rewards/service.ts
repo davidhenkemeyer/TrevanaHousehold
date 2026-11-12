@@ -28,14 +28,14 @@ import type {
   RewardItemList,
   RewardsSummary,
   UpdateRewardItemBody,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import {
   type CoinCurrency,
   type RedemptionStatus,
   canRedeem,
   earnings,
   formatAmount,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { AppError, conflict, forbidden, notFound } from "../../errors.js";

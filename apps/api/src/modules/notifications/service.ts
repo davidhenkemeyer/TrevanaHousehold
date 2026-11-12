@@ -14,7 +14,7 @@ import type {
   NotificationSettings,
   RegisterDeviceBody,
   UpdateNotificationSettingsBody,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import {
   NOTIFICATION_TYPES,
   type NotificationDetails,
@@ -22,7 +22,7 @@ import {
   deliveryFor,
   notificationText,
   resolvePrefs,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import type { Notification, Prisma } from "../../generated/prisma/client.js";

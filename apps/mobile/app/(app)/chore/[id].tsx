@@ -3,7 +3,7 @@
  * feedback, and the full history of attempts and status changes.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReviewBody } from "@titan/contracts";
+import type { ReviewBody } from "@tenara/contracts";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";

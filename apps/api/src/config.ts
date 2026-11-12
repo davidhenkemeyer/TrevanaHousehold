@@ -21,7 +21,7 @@ const envSchema = z.object({
   // The address apps use for uploads and photos. Unset in development: this
   // computer's LAN address, so phones on the same Wi-Fi can reach local storage.
   S3_PUBLIC_URL: z.url().optional(),
-  S3_BUCKET: z.string().min(3).default("titan-photos"),
+  S3_BUCKET: z.string().min(3).default("tenara-photos"),
   S3_REGION: z.string().default("us-east-1"),
   S3_ACCESS_KEY: z.string().default("chores"),
   S3_SECRET_KEY: z.string().default("chores-dev-secret"),

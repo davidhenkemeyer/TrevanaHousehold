@@ -8,8 +8,8 @@ import type {
   SubmitBody,
   SubmitResponse,
   WeekLoad,
-} from "@titan/contracts";
-import { weeklyCapacitySchema } from "@titan/contracts";
+} from "@tenara/contracts";
+import { weeklyCapacitySchema } from "@tenara/contracts";
 import {
   type ChoreStatus,
   type PlainDate,
@@ -17,7 +17,7 @@ import {
   daysBetween,
   priorityRank,
   summarizeDayLoad,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { badRequest, notFound } from "../../errors.js";

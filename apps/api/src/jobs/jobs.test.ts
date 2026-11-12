@@ -1,4 +1,4 @@
-import type { Instance, InstanceDetail, InstanceList, Member } from "@titan/contracts";
+import type { Instance, InstanceDetail, InstanceList, Member } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { type Session, minutes, useTestApp } from "../test/harness.js";
 import { testDatabaseUrl } from "../test/testDatabase.js";

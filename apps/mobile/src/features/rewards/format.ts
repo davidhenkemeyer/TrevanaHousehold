@@ -1,16 +1,16 @@
 /**
  * Showing and typing reward amounts. The arithmetic and the rules live in
- * @titan/domain (rewards.ts) and the API; this only turns amounts into words
+ * @tenara/domain (rewards.ts) and the API; this only turns amounts into words
  * and typed text into amounts.
  */
-import type { LedgerEntry } from "@titan/contracts";
+import type { LedgerEntry } from "@tenara/contracts";
 import {
   type CoinCurrency,
   MAX_AMOUNT,
   type RewardCurrency,
   formatAmount,
   parseMoney,
-} from "@titan/domain";
+} from "@tenara/domain";
 
 /** Formats amounts in the family's currency, or null when rewards are off. */
 export function amountFormatter(

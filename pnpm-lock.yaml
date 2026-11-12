@@ -226,10 +226,10 @@ importers:
       '@prisma/client':
         specifier: 7.10.1
         version: 7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)
-      '@titan/contracts':
+      '@tenara/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@titan/domain':
+      '@tenara/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       expo-server-sdk:
@@ -278,13 +278,13 @@ importers:
       '@tanstack/react-query':
         specifier: 5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.0)
-      '@titan/contracts':
+      '@tenara/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@titan/domain':
+      '@tenara/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@titan/tokens':
+      '@tenara/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
       expo:
@@ -375,7 +375,7 @@ importers:
 
   packages/contracts:
     dependencies:
-      '@titan/domain':
+      '@tenara/domain':
         specifier: workspace:*
         version: link:../domain
       zod:

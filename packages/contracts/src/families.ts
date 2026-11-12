@@ -1,4 +1,4 @@
-import { MONEY_CODES, REWARD_CURRENCIES } from "@titan/domain";
+import { MONEY_CODES, REWARD_CURRENCIES } from "@tenara/domain";
 import { z } from "zod";
 import {
   avatarColorSchema,

@@ -1,6 +1,6 @@
 /**
  * Runs one job immediately, without the scheduler. For local development and
- * operations: `pnpm --filter @titan/api job:plan`, `job:mark-late`, or `job:cleanup-photos`.
+ * operations: `pnpm --filter @tenara/api job:plan`, `job:mark-late`, or `job:cleanup-photos`.
  */
 import pino from "pino";
 import { loadConfig } from "../config.js";

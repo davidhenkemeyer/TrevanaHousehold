@@ -4,7 +4,7 @@
  * Opening the inbox doesn't mark everything read; "Mark all read" does.
  */
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Notification } from "@titan/contracts";
+import type { Notification } from "@tenara/contracts";
 import { useRouter } from "expo-router";
 import { Pressable, RefreshControl, View } from "react-native";
 import { GradientHeader } from "../../src/components/brand";

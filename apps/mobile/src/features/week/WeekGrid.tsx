@@ -4,8 +4,8 @@
  * when someone has more than they have time for. Tapping a cell lists that
  * member's chores for the day.
  */
-import type { Member, WeekLoad } from "@titan/contracts";
-import type { PlainDate } from "@titan/domain";
+import type { Member, WeekLoad } from "@tenara/contracts";
+import type { PlainDate } from "@tenara/domain";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText, Avatar, Card } from "../../components/ui";
 import { colors, radii, spacing } from "../../theme";

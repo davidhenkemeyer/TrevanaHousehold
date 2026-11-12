@@ -10,8 +10,8 @@
  * The API decides who may see and do what; this screen shows its answers.
  */
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { MemberRewards } from "@titan/contracts";
-import { type CoinCurrency, formatAmount } from "@titan/domain";
+import type { MemberRewards } from "@tenara/contracts";
+import { type CoinCurrency, formatAmount } from "@tenara/domain";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";

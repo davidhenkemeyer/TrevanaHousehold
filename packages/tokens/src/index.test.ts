@@ -15,12 +15,12 @@ function contrast(a: string, b: string): number {
 }
 
 describe("tokens", () => {
-  it("uses the branding doc's Household palette", () => {
-    expect(accents.household).toEqual({ amber: "#D97706", emerald: "#059669", sky: "#0284C7" });
-    expect(themeFor("household").colors.gradient).toEqual(["#D97706", "#059669"]);
+  it("uses the branding doc's Family palette", () => {
+    expect(accents.family).toEqual({ amber: "#D97706", emerald: "#059669", sky: "#0284C7" });
+    expect(themeFor("family").colors.gradient).toEqual(["#D97706", "#059669"]);
   });
 
-  it.each(["household", "agile", "focus"] as const)("%s text is readable (WCAG AA)", (app) => {
+  it.each(["family", "team", "focus"] as const)("%s text is readable (WCAG AA)", (app) => {
     const { colors } = themeFor(app);
     expect(contrast(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(colors.textMuted, colors.surface)).toBeGreaterThanOrEqual(4.5);

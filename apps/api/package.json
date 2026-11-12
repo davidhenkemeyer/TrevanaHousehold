@@ -1,5 +1,5 @@
 {
-  "name": "@titan/api",
+  "name": "@tenara/api",
   "version": "0.0.0",
   "private": true,
   "description": "Fastify REST API and background jobs for the chores app.",
@@ -39,8 +39,8 @@
     "@node-rs/argon2": "2.2.2",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
-    "@titan/contracts": "workspace:*",
-    "@titan/domain": "workspace:*",
+    "@tenara/contracts": "workspace:*",
+    "@tenara/domain": "workspace:*",
     "expo-server-sdk": "8.0.0",
     "fastify": "5.12.8",
     "fastify-type-provider-zod": "7.0.0",

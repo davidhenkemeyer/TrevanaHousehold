@@ -1,8 +1,8 @@
-# Production image for the Titan Household API (and, with a different command,
+# Production image for the Tenara Family API (and, with a different command,
 # the job worker). Build from the repo root:
-#   docker build -f apps/api/Dockerfile -t titan-api .
+#   docker build -f apps/api/Dockerfile -t tenara-api .
 # Run migrations before starting a new version:
-#   docker run --rm --env-file prod.env titan-api npm run db:deploy
+#   docker run --rm --env-file prod.env tenara-api npm run db:deploy
 #
 # Node 24: the newest version Prisma 7 officially supports (dev machines run 26).
 FROM node:24-slim AS base
@@ -13,13 +13,13 @@ WORKDIR /repo
 FROM base AS build
 COPY . .
 # Only the API and the packages it uses (not the Expo app).
-RUN pnpm install --frozen-lockfile --filter "@titan/api..."
-RUN pnpm --filter "@titan/api..." run build
+RUN pnpm install --frozen-lockfile --filter "@tenara/api..."
+RUN pnpm --filter "@tenara/api..." run build
 # A self-contained folder: the API, its built workspace packages, and
 # production dependencies only.
 # dist/ is gitignored, so it's copied in explicitly (it includes the compiled
 # Prisma client from src/generated).
-RUN pnpm deploy --filter @titan/api --prod /out \
+RUN pnpm deploy --filter @tenara/api --prod /out \
   && rm -rf /out/dist && cp -r apps/api/dist /out/dist
 
 FROM node:24-slim AS runtime

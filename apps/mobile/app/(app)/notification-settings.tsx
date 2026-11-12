@@ -4,8 +4,8 @@
  * or off (it's still in your inbox either way).
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { UpdateNotificationSettingsBody } from "@titan/contracts";
-import { type Delivery, type NotificationType, formatTime12h } from "@titan/domain";
+import type { UpdateNotificationSettingsBody } from "@tenara/contracts";
+import { type Delivery, type NotificationType, formatTime12h } from "@tenara/domain";
 import { useRouter } from "expo-router";
 import { Platform, View } from "react-native";
 import { GradientHeader } from "../../src/components/brand";

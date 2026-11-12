@@ -11,19 +11,21 @@
  */
 import type { ExpoConfig } from "expo/config";
 
-const BUNDLE_ID = "com.titansuite.household"; // placeholder: replace before the first store build
+// Assumes the domain gettenara.com: confirm before the first store build (it can't change after).
+const BUNDLE_ID = "com.gettenara.family";
 const EAS_PROJECT_ID: string | undefined = process.env.EAS_PROJECT_ID || undefined;
 
 const config: ExpoConfig = {
-  name: "Titan Household",
-  slug: "titan-household",
-  scheme: "titanhousehold",
+  // The name under the icon: short, because iPhones cut off "Tenara Family".
+  name: "Tenara",
+  slug: "tenara-family",
+  scheme: "tenarafamily",
   version: "0.1.0",
   // Store build numbers are managed by EAS (eas.json: appVersionSource "remote").
   runtimeVersion: { policy: "appVersion" },
   orientation: "portrait",
   userInterfaceStyle: "light",
-  // Generated from assets/brand by `pnpm --filter @titan/mobile icons`.
+  // Generated from assets/brand by `pnpm --filter @tenara/mobile icons`.
   icon: "./assets/generated/icon.png",
   ios: {
     bundleIdentifier: BUNDLE_ID,
@@ -53,8 +55,8 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        photosPermission: "Titan Household uses your photos to show that a chore is done.",
-        cameraPermission: "Titan Household uses the camera to take a photo of a finished chore.",
+        photosPermission: "Tenara Family uses your photos to show that a chore is done.",
+        cameraPermission: "Tenara Family uses the camera to take a photo of a finished chore.",
         microphonePermission: false,
       },
     ],

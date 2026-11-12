@@ -9,7 +9,7 @@ import {
   REVIEW_DECISIONS,
   REVIEW_POLICIES,
   ROLES,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { describe, expect, it } from "vitest";
 import {
   AssignMode,

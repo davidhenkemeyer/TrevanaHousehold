@@ -1,4 +1,4 @@
-import type { AuthResponse, Tokens } from "@titan/contracts";
+import type { AuthResponse, Tokens } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { PASSWORD, useTestApp } from "../test/harness.js";
 import { REFRESH_COOKIE } from "./webSession.js";
@@ -6,7 +6,7 @@ import { REFRESH_COOKIE } from "./webSession.js";
 /** The web app's refresh token lives in an httpOnly cookie, never in JSON. */
 describe("web sessions (refresh token in an httpOnly cookie)", () => {
   const t = useTestApp();
-  const web = { "x-titan-client": "web" };
+  const web = { "x-tenara-client": "web" };
 
   interface Cookie {
     name: string;
@@ -142,7 +142,7 @@ describe("web sessions (refresh token in an httpOnly cookie)", () => {
         headers: {
           origin,
           "access-control-request-method": "POST",
-          "access-control-request-headers": "x-titan-client,content-type",
+          "access-control-request-headers": "x-tenara-client,content-type",
         },
       });
     const evil = await preflight("https://evil.example.com");

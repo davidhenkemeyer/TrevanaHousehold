@@ -7,7 +7,7 @@
  * signs in with their password instead.
  */
 import { useMutation } from "@tanstack/react-query";
-import type { Member } from "@titan/contracts";
+import type { Member } from "@tenara/contracts";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";

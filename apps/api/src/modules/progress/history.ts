@@ -17,7 +17,7 @@ import {
   dayOutcome,
   instantToPlainDate,
   streakOf,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { dbDateToPlain, plainToDbDate } from "../../lib/dates.js";
 import type { DbOrTx } from "../instances/generate.js";
 

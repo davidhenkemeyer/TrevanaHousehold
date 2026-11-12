@@ -5,7 +5,7 @@ import type {
   Member,
   SubmitResponse,
   WeekLoad,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { T0, type Session, minutes, useTestApp } from "../../test/harness.js";
 import { planFamily } from "./generate.js";

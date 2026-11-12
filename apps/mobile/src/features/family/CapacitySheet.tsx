@@ -3,8 +3,8 @@
  * (0 = a day off). The planner uses it to spread chores fairly, so young kids
  * get less and parents more. Saving re-plans chores nobody has started yet.
  */
-import type { Member } from "@titan/contracts";
-import type { WeeklyCapacity } from "@titan/domain";
+import type { Member } from "@tenara/contracts";
+import type { WeeklyCapacity } from "@tenara/domain";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { FieldLabel, SelectChip, Sheet, Stepper } from "../../components/forms";

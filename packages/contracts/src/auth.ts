@@ -25,7 +25,7 @@ export type LoginBody = z.infer<typeof loginBodySchema>;
 
 /**
  * Native apps send the refresh token in the body. The web app sends none: its
- * token is in an httpOnly cookie (with the `X-Titan-Client: web` header).
+ * token is in an httpOnly cookie (with the `X-Tenara-Client: web` header).
  */
 export const refreshBodySchema = z.strictObject({
   refreshToken: z.string().min(1).max(200).optional(),

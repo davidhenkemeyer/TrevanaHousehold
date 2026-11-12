@@ -4,7 +4,7 @@ import type {
   InstanceDetail,
   ReviewQueue,
   SubmitResponse,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { cleanUpPhotos } from "../../jobs/photoCleanup.js";
 import { FAKE_UPLOAD_URL } from "../../test/fakeStorage.js";

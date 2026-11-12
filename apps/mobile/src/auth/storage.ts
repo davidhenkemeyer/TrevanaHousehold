@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import { kv } from "../lib/kv";
 import { type SessionStorage, type StoredSession, persistable } from "./session";
 
-const SESSION_KEY = "titan.session";
+const SESSION_KEY = "tenara.session";
 
 export const sessionStorage: SessionStorage = {
   async load() {
@@ -16,7 +16,7 @@ export const sessionStorage: SessionStorage = {
 };
 
 export type DeviceMode = "personal" | "shared";
-const DEVICE_MODE_KEY = "titan.deviceMode";
+const DEVICE_MODE_KEY = "tenara.deviceMode";
 
 /**
  * Whether this device is someone's own phone ("personal": stays signed in) or

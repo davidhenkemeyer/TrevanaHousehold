@@ -1,4 +1,4 @@
-import type { FamilyDetail, Member, MeResponse } from "@titan/contracts";
+import type { FamilyDetail, Member, MeResponse } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { type Session, minutes, useTestApp } from "../../test/harness.js";
 

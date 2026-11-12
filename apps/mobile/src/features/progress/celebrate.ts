@@ -4,7 +4,7 @@
  * the device's storage; the first time (nothing stored yet), everything
  * already earned counts as seen, so a new device doesn't replay old news.
  */
-import type { MemberProgress } from "@titan/contracts";
+import type { MemberProgress } from "@tenara/contracts";
 
 export interface Seen {
   level: number;
@@ -45,7 +45,7 @@ export function parseSeen(raw: string | null): Seen | null {
   }
 }
 
-export const seenKey = (membershipId: string) => `titan.progress.seen.${membershipId}`;
+export const seenKey = (membershipId: string) => `tenara.progress.seen.${membershipId}`;
 
 /** "Level 3 · 5-day streak" (or "Level 3" when there's no streak yet). */
 export function levelLine(progress: Pick<MemberProgress, "level" | "streak">): string {

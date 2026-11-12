@@ -1,6 +1,6 @@
 /**
- * Brand pieces: the gradient header, the Titan "T" mark, and the progress ring
- * (the Household icon's co-op ring, reused to show the day's progress).
+ * Brand pieces: the gradient header, the Tenara "T" mark, and the progress ring
+ * (the app icon's co-op ring, reused to show the day's progress).
  */
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
@@ -26,9 +26,9 @@ export function GradientHeader({ children }: { children: ReactNode }) {
 export function BrandHeader({ subtitle }: { subtitle: string }) {
   return (
     <GradientHeader>
-      <TitanMark size={64} />
+      <TenaraMark size={64} />
       <AppText variant="display" color="#FFFFFF" accessibilityRole="header">
-        Titan Household
+        Tenara Family
       </AppText>
       <AppText color="#FFFFFF">{subtitle}</AppText>
     </GradientHeader>
@@ -36,10 +36,10 @@ export function BrandHeader({ subtitle }: { subtitle: string }) {
 }
 
 /** The geometric "T" in a gear, in white (for use on the gradient). */
-export function TitanMark({ size = 56 }: { size?: number }) {
+export function TenaraMark({ size = 56 }: { size?: number }) {
   const teeth = [0, 45, 90, 135, 180, 225, 270, 315];
   return (
-    <Svg width={size} height={size} viewBox="0 0 512 512" accessibilityLabel="Titan Household">
+    <Svg width={size} height={size} viewBox="0 0 512 512" accessibilityLabel="Tenara Family">
       <G fill="#FFFFFF">
         {teeth.map((angle) => (
           <Rect

@@ -5,7 +5,7 @@
  * in one place.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Redemption } from "@titan/contracts";
+import type { Redemption } from "@tenara/contracts";
 import { View } from "react-native";
 import { errorMessage } from "../../components/Screen";
 import { AppText, Avatar, Button, Card, ErrorText } from "../../components/ui";

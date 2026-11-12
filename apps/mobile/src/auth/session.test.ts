@@ -1,4 +1,4 @@
-import type { Tokens } from "@titan/contracts";
+import type { Tokens } from "@tenara/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/http";
 import { SessionManager, type SessionStorage, type StoredSession, persistable } from "./session";

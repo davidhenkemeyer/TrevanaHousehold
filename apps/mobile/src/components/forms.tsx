@@ -1,7 +1,7 @@
 /**
  * Form building blocks for the parent tools: segmented controls, selectable
  * chips, steppers, toggles, sections, and a bottom sheet. Styled from the
- * Titan tokens like the rest of `components/`; every control is a real
+ * Tenara tokens like the rest of `components/`; every control is a real
  * button/switch for screen readers and works with a mouse on the web.
  */
 import type { ReactNode } from "react";

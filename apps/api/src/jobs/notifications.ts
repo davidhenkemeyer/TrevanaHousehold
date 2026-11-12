@@ -21,7 +21,7 @@ import {
   instantToPlainDate,
   instantToPlainTime,
   resolvePrefs,
-} from "@titan/domain";
+} from "@tenara/domain";
 import type { FastifyBaseLogger } from "fastify";
 import type { Deps } from "../deps.js";
 import type { PushMessage } from "../lib/push/types.js";

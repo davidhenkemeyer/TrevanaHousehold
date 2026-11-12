@@ -1,4 +1,4 @@
-import type { Instance } from "@titan/contracts";
+import type { Instance } from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { buildSections, dayProgress, defaultScope, dueLabel, sectionOf } from "./sections";
 

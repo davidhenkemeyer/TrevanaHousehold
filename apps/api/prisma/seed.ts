@@ -1,12 +1,12 @@
 /**
  * Local demo data: the design doc's example family (Mom, Dad, Billy, Sally).
- * Run with `pnpm --filter @titan/api db:seed`. Safe to re-run: it does
+ * Run with `pnpm --filter @tenara/api db:seed`. Safe to re-run: it does
  * nothing if the demo family already exists.
  *
  *   Parents sign in with mom@example.com / dad@example.com, password "chores-demo-password".
  *   Billy's PIN is 1111, Sally's is 2222.
  */
-import { defaultAvatarColor, defaultWeeklyCapacity, instantToPlainDate } from "@titan/domain";
+import { defaultAvatarColor, defaultWeeklyCapacity, instantToPlainDate } from "@tenara/domain";
 import { createDb } from "../src/db.js";
 import { hashSecret } from "../src/lib/secrets.js";
 import { planFamily } from "../src/modules/instances/generate.js";

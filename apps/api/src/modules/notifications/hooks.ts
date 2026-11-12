@@ -3,7 +3,7 @@
  * (via `notify`, in the caller's transaction). Pushes are sent later by the
  * background jobs.
  */
-import type { ChoreAction, ChoreStatus } from "@titan/domain";
+import type { ChoreAction, ChoreStatus } from "@tenara/domain";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { displayNameOf, notify, parentsOf } from "./service.js";
 

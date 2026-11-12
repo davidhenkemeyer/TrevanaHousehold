@@ -2,7 +2,7 @@
  * Notifications: which kinds there are, how each is delivered by default,
  * quiet hours, when the daily digest is due, and the words used.
  *
- * Product rules (Titan branding doc and the family's choices):
+ * Product rules (branding doc and the family's choices):
  *   - The default is one daily digest (7:30 AM local time), not a stream of
  *     alerts. Only things someone is actively waiting on are instant by
  *     default: a chore sent back to try again (kid) and a reward request

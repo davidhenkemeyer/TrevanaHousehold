@@ -8,7 +8,7 @@ import {
   REVIEW_DECISIONS,
   REVIEW_POLICIES,
   isPlainDate,
-} from "@titan/domain";
+} from "@tenara/domain";
 import { z } from "zod";
 import { checklistItemSchema } from "./chores.js";
 import { idSchema, isoDateTimeSchema } from "./common.js";

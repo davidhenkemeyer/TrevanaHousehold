@@ -1,7 +1,7 @@
 /**
- * @titan/tokens: the Titan design system's tokens (Titan Branding Suite §7).
+ * @tenara/tokens: the Tenara design system's tokens (Branding Suite §7).
  *
- * Shared by every Titan app. Each app picks its accent palette through
+ * Shared by every Tenara app. Each app picks its accent palette through
  * `themeFor(app)`; components read semantic roles (`colors.primary`,
  * `colors.textMuted`, ...) and never hard-code hex values.
  */
@@ -17,12 +17,12 @@ export const neutrals = {
 
 /** Per-app accent palettes (§7.1). */
 export const accents = {
-  household: {
+  family: {
     amber: "#D97706", // Warm Amber
     emerald: "#059669", // Soft Emerald
     sky: "#0284C7", // Playful Sky Blue
   },
-  agile: {
+  team: {
     slate: "#1E293B", // Deep Slate
     indigo: "#4F46E5", // Electric Indigo
     cyan: "#06B6D4", // Cyan Accent
@@ -34,7 +34,7 @@ export const accents = {
   },
 } as const;
 
-export type TitanApp = keyof typeof accents;
+export type TenaraApp = keyof typeof accents;
 
 /** Font families (§7.2). Loaded by each app; these are the names it registers them under. */
 export const fonts = {
@@ -109,7 +109,7 @@ export interface ThemeColors {
 }
 
 export interface Theme {
-  app: TitanApp;
+  app: TenaraApp;
   colors: ThemeColors;
   typography: typeof typography;
   spacing: typeof spacing;
@@ -120,26 +120,26 @@ export interface Theme {
 
 const DANGER = "#DC2626";
 
-const appColors: Record<TitanApp, ThemeColors> = {
-  household: {
-    primary: accents.household.emerald,
+const appColors: Record<TenaraApp, ThemeColors> = {
+  family: {
+    primary: accents.family.emerald,
     onPrimary: neutrals.white,
-    success: accents.household.emerald,
-    info: accents.household.sky,
-    attention: accents.household.amber,
+    success: accents.family.emerald,
+    info: accents.family.sky,
+    attention: accents.family.amber,
     danger: DANGER,
     background: neutrals.slate100,
     surface: neutrals.white,
     border: neutrals.border,
     text: neutrals.slate900,
     textMuted: neutrals.slate700,
-    gradient: [accents.household.amber, accents.household.emerald],
+    gradient: [accents.family.amber, accents.family.emerald],
   },
-  agile: {
-    primary: accents.agile.indigo,
+  team: {
+    primary: accents.team.indigo,
     onPrimary: neutrals.white,
     success: "#059669",
-    info: accents.agile.cyan,
+    info: accents.team.cyan,
     attention: "#D97706",
     danger: DANGER,
     background: neutrals.slate100,
@@ -147,7 +147,7 @@ const appColors: Record<TitanApp, ThemeColors> = {
     border: neutrals.border,
     text: neutrals.slate900,
     textMuted: neutrals.slate700,
-    gradient: [accents.agile.slate, accents.agile.indigo],
+    gradient: [accents.team.slate, accents.team.indigo],
   },
   focus: {
     primary: accents.focus.violet,
@@ -165,7 +165,7 @@ const appColors: Record<TitanApp, ThemeColors> = {
   },
 };
 
-export function themeFor(app: TitanApp): Theme {
+export function themeFor(app: TenaraApp): Theme {
   return {
     app,
     colors: appColors[app],

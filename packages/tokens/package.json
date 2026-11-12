@@ -1,8 +1,8 @@
 {
-  "name": "@titan/tokens",
+  "name": "@tenara/tokens",
   "version": "0.0.0",
   "private": true,
-  "description": "Titan design system tokens: colors, type, spacing, radii, shadows, per-app themes.",
+  "description": "Tenara design system tokens: colors, type, spacing, radii, shadows, per-app themes.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,5 +1,5 @@
 /**
- * Minimal HTTP client for the Titan API.
+ * Minimal HTTP client for the Tenara API.
  *
  * - Adds the access token to every authenticated request.
  * - When the API says the access token expired, refreshes once and retries.
@@ -8,7 +8,7 @@
  * - Turns error responses into ApiError with the API's stable `code` and its
  *   human-readable `message`, which screens can show as-is.
  */
-import type { ErrorResponse } from "@titan/contracts";
+import type { ErrorResponse } from "@tenara/contracts";
 
 export class ApiError extends Error {
   constructor(
@@ -34,7 +34,7 @@ export interface HttpClientOptions {
   /** Gets a fresh access token. Returns null when the session has ended. */
   refreshAccessToken: () => Promise<string | null>;
   /**
-   * The web app: say so with `X-Titan-Client: web` and send cookies, so the
+   * The web app: say so with `X-Tenara-Client: web` and send cookies, so the
    * API keeps the refresh token in an httpOnly cookie instead of the body.
    */
   browser?: boolean;
@@ -53,7 +53,7 @@ const networkError = () =>
   new ApiError(
     0,
     "NETWORK_ERROR",
-    "Can't reach Titan right now. Check your connection and try again.",
+    "Can't reach Tenara right now. Check your connection and try again.",
   );
 
 async function readJson(res: Response): Promise<unknown> {
@@ -82,7 +82,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     const headers: Record<string, string> = { accept: "application/json" };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (token) headers.authorization = `Bearer ${token}`;
-    if (options.browser) headers["x-titan-client"] = "web";
+    if (options.browser) headers["x-tenara-client"] = "web";
     try {
       return await doFetch(options.baseUrl + path, {
         method,

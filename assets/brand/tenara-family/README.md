@@ -1,6 +1,6 @@
-# Titan Household icon
+# Tenara Family icon
 
-Drawn from the Titan Branding Suite spec (§7.3): the geometric "T" engine mark in a gear, surrounded by a co-op progress ring, on a 135° gradient from Warm Amber `#D97706` to Soft Emerald `#059669`. Artwork stays inside the 64 px safe zone of a 512 px canvas.
+Drawn from the Branding Suite spec (§7.3): the geometric "T" engine mark in a gear, surrounded by a co-op progress ring, on a 135° gradient from Warm Amber `#D97706` to Soft Emerald `#059669`. Artwork stays inside the 64 px safe zone of a 512 px canvas.
 
 | File                      | Use                                                                                                                              |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |

@@ -1,7 +1,7 @@
 /**
  * Gamification: XP, levels, streaks, badges, and the shared family goal.
  *
- * Product rules (Titan branding doc and the family's choices):
+ * Product rules (branding doc and the family's choices):
  *   - Everyone earns XP, parents included, and everyone's XP fills the
  *     family goal. There is no leaderboard comparing people.
  *   - Nothing is ever taken away: XP is never deducted, badges are never

@@ -6,7 +6,7 @@ import type {
   ReviewQueue,
   ReviewResponse,
   SubmitResponse,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { type Session, useTestApp } from "../../test/harness.js";
 

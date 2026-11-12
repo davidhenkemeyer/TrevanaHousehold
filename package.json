@@ -1,5 +1,5 @@
 {
-  "name": "titan-household",
+  "name": "tenara",
   "private": true,
   "type": "module",
   "description": "Family chore tracking app: Expo (iOS/Android/Web) client, Fastify API, shared TypeScript domain.",

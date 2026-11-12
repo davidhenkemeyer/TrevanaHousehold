@@ -9,7 +9,7 @@ import type {
   RewardsSummary,
   SubmitResponse,
   WeekLoad,
-} from "@titan/contracts";
+} from "@tenara/contracts";
 import { describe, expect, it } from "vitest";
 import { expireOpenJobs, markLateInstances } from "../../jobs/lateness.js";
 import { type Session, useTestApp } from "../../test/harness.js";
