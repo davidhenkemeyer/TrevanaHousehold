@@ -5,9 +5,11 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Member } from "@tenara/contracts";
+import type { AgeGroup } from "@tenara/domain";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Modal, View } from "react-native";
+import { ChoiceChips, FieldLabel } from "../../../src/components/forms";
 import { PinPad } from "../../../src/components/PinPad";
 import { Screen, errorMessage } from "../../../src/components/Screen";
 import {
@@ -20,6 +22,7 @@ import {
   TextField,
 } from "../../../src/components/ui";
 import { CapacitySheet } from "../../../src/features/family/CapacitySheet";
+import { AGE_GROUP_OPTIONS } from "../../../src/features/setup/flow";
 import { useRewards } from "../../../src/features/rewards/useRewards";
 import { formatMinutes, weeklyTotal } from "../../../src/features/week/week";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
@@ -40,6 +43,7 @@ export default function Family() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["family", familyId] });
 
   const [kidName, setKidName] = useState("");
+  const [kidAge, setKidAge] = useState<AgeGroup>("KID");
   const [inviteEmail, setInviteEmail] = useState("");
   const [pinFor, setPinFor] = useState<Member | null>(null);
   const [capacityFor, setCapacityFor] = useState<Member | null>(null);
@@ -48,7 +52,7 @@ export default function Family() {
   );
 
   const addKid = useMutation({
-    mutationFn: () => api.createChild(familyId!, { displayName: kidName.trim() }),
+    mutationFn: () => api.createChild(familyId!, { displayName: kidName.trim(), ageGroup: kidAge }),
     onSuccess: () => {
       setKidName("");
       void refresh();
@@ -169,6 +173,8 @@ export default function Family() {
               code.
             </AppText>
             <TextField label="Name" value={kidName} onChangeText={setKidName} />
+            <FieldLabel>Age</FieldLabel>
+            <ChoiceChips options={AGE_GROUP_OPTIONS} value={kidAge} onChange={setKidAge} />
             <ErrorText message={errorMessage(addKid.error)} />
             <Button
               title="Add kid"

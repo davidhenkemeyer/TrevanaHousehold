@@ -196,6 +196,8 @@ export function Checkbox({
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
+      // react-native-web drops accessibilityState for checkboxes; this reaches screen readers.
+      aria-checked={checked}
       accessibilityLabel={label}
       onPress={onToggle}
       style={styles.checkRow}

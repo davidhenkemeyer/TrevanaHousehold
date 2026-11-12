@@ -53,18 +53,25 @@ test("parent sets up the family; kid completes a chore on the shared device", as
   await field(page, "Password (at least 8 characters)").fill(password);
   await button(page, "Create account").click();
 
-  // Onboarding: create the family.
-  await expect(text(page, "Let's set up your family. You'll add your kids next.")).toBeVisible();
+  // Setup, step 1: create the family.
+  await expect(text(page, "Let's set up your family. It takes about two minutes.")).toBeVisible();
   await field(page, "Family name").fill("The Testers");
   await shot(page, "02-onboarding");
   await button(page, "Create family").click();
 
-  // Family tab: add Billy.
-  await expect(text(page, "Add a kid", true)).toBeVisible();
+  // Step 2: add Billy. Then skip the starter chores (this test makes its own) and rewards.
+  await expect(text(page, "Add your first kid", true)).toBeVisible();
   await field(page, "Name").fill("Billy");
   await button(page, "Add kid").click();
   await expect(text(page, "Billy", true)).toBeVisible();
   await shot(page, "03-family");
+  await button(page, "Next").click();
+  await expect(text(page, "Which rooms?", true)).toBeVisible();
+  await button(page, "Skip").click();
+  await expect(text(page, "What do chores earn?", true)).toBeVisible();
+  await button(page, "Skip").click();
+  await expect(text(page, "You're all set", true)).toBeVisible();
+  await button(page, "Invite the other parent").click();
 
   // Create Billy's chore through the API (the chore editor is Step 6).
   const { tokens } = await api<{ tokens: { accessToken: string } }>("/v1/auth/login", {
@@ -680,7 +687,7 @@ test("web sign-in keeps no tokens in page storage and survives a reload", async 
   await field(page, "Email").fill(email);
   await field(page, "Password (at least 8 characters)").fill("correct horse battery");
   await button(page, "Create account").click();
-  await expect(text(page, "Let's set up your family. You'll add your kids next.")).toBeVisible();
+  await expect(text(page, "Let's set up your family. It takes about two minutes.")).toBeVisible();
 
   // The refresh token is an httpOnly cookie; page storage holds no token.
   // The cookie is scoped to the API's /v1/auth path.
@@ -694,5 +701,49 @@ test("web sign-in keeps no tokens in page storage and survives a reload", async 
   // Opening the app again (a fresh page load), the cookie signs us back in.
   // (From "/": the local static server has no fallback for deep links.)
   await page.goto("/");
-  await expect(text(page, "Let's set up your family. You'll add your kids next.")).toBeVisible();
+  await expect(text(page, "Let's set up your family. It takes about two minutes.")).toBeVisible();
+});
+
+test("quick setup: kids by age and starter chores, planned in one go", async ({ page }) => {
+  const email = `e2e-setup-${Date.now()}@example.com`;
+  await page.goto("/");
+  await text(page, "New here? Create a family account").click();
+  await field(page, "Your name").fill("Mom");
+  await field(page, "Email").fill(email);
+  await field(page, "Password (at least 8 characters)").fill("correct horse battery");
+  await button(page, "Create account").click();
+  await field(page, "Family name").fill("The Starters");
+  await button(page, "Create family").click();
+
+  // A 4–6-year-old gets less time than the default.
+  await field(page, "Name").fill("Sally");
+  await button(page, "Ages 4–6").click();
+  await button(page, "Add kid").click();
+  await expect(text(page, "Ages 4–6 · 10 min on school days, 20 on weekends")).toBeVisible();
+  await button(page, "Next").click();
+
+  // Rooms: suggestions that suit a 4–6-year-old are ticked; chores for 7+ aren't.
+  await expect(text(page, "Which rooms?", true)).toBeVisible();
+  await expect(visible(page.getByRole("checkbox", { name: "Make your bed" }))).toBeChecked();
+  await expect(
+    visible(page.getByRole("checkbox", { name: "Load the dishwasher" })),
+  ).not.toBeChecked();
+  // Pets isn't picked by default; turning the room on brings its suggestions.
+  await button(page, "Pets").click();
+  await expect(
+    visible(page.getByRole("checkbox", { name: "Feed the pet (morning)" })),
+  ).toBeChecked();
+  await shot(page, "60-setup-rooms");
+  await visible(page.getByRole("button", { name: /^Add \d+ chores$/ })).click();
+
+  await expect(text(page, "What do chores earn?", true)).toBeVisible();
+  await button(page, "Next").click();
+  await expect(text(page, /chores are planned for the week/)).toBeVisible();
+  await shot(page, "61-setup-done");
+  await button(page, "Go to Today").click();
+
+  // The chores exist and are on the Chores tab.
+  await visible(page.getByRole("tab", { name: /Chores/ })).click();
+  await expect(text(page, "Make your bed", true)).toBeVisible();
+  await expect(text(page, "Feed the pet (morning)", true)).toBeVisible();
 });
