@@ -1,6 +1,6 @@
 # Handoff: Tenara Family
 
-State as of 11 Nov 2026, on `main` (`origin` is https://github.com/davidhenkemeyer/TitanHousehold; the GitHub repo still has the old name, and the Step 11 and rename commits aren't pushed yet).
+State as of 11 Nov 2026, on `main` (`origin` is https://github.com/davidhenkemeyer/TitanHousehold; the GitHub repo still has the old name). Everything through the rename is pushed; the Step 12 commits are local until the owner says to push.
 
 Tenara Family is a family chore and habit app for iOS, Android, and the web. It's the first app of the Tenara suite. Start with these:
 
@@ -11,7 +11,7 @@ Tenara Family is a family chore and habit app for iOS, Android, and the web. It'
 
 ## What's done
 
-Roadmap Steps 0–10 are built, tested, and committed, and Step 11 is done as far as code goes. One or more commits per step:
+Roadmap Steps 0–10 and 12 are built, tested, and committed, and Step 11 is done as far as code goes. One or more commits per step:
 
 | Step | What it added                                                                                                             | Commit(s)                                             |
 | ---- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -28,13 +28,16 @@ Roadmap Steps 0–10 are built, tested, and committed, and Step 11 is done as fa
 | 9    | XP, levels, streaks with saves, badges, family goal                                                                       | `de8500e`                                             |
 | 10   | Notifications: in-app inbox, 7:30 AM daily digest, instant pushes, settings                                               | `8b1417f`                                             |
 | 11   | Deploy prep (code only): container, production config checks, web cookie sign-in, bucket setup, push receipts, EAS config | `9658555`, `6f1f84b`, `17ae521`, `6b6b1a8`, `87a38c2` |
-| —    | Rename Titan to Tenara: Tenara Family (this app), Tenara Team, Tenara Focus; `@tenara/*` packages; artwork unchanged      | the rename commit                                     |
+| —    | Rename Titan to Tenara: Tenara Family (this app), Tenara Team, Tenara Focus; `@tenara/*` packages; artwork unchanged      | `4e641ba`                                             |
+| 12   | Starter chore list by room and age; 4-step setup; Basic vs Pro with a 14-day trial and RevenueCat; home-screen widgets    | `dd06c6d`, `84f8e83`, `1a1aee2`, `21239f4`, plus docs |
 
-Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and API tests (domain 224, API 205, app 69, contracts 5, tokens 4) and 8 Playwright web tests pass. The production Docker image was built and run locally against Postgres with `NODE_ENV=production`: migrations, `/health`, sign-up, and a clean SIGTERM shutdown all work. GitHub Actions passed on the earlier pushes; it now also builds the Docker image and the web export.
+Verification for Step 12: format, lint, typecheck, and build pass; 621 unit and API tests (domain 297, API 227, app 88, contracts 5, tokens 4) and 10 Playwright web tests pass. `expo prebuild` generates the Android widget; the iPhone widget target can only be generated on macOS (EAS).
+
+Verification for Step 11: The production Docker image was built and run locally against Postgres with `NODE_ENV=production`: migrations, `/health`, sign-up, and a clean SIGTERM shutdown all work. GitHub Actions passed on the earlier pushes; it now also builds the Docker image and the web export.
 
 ## In progress
 
-- **Step 11 is code-complete up to the account steps.** Everything left needs the owner: see [docs/deploy.md](docs/deploy.md), step 0 first.
+- **Steps 11 and 12 are code-complete up to the account steps.** Everything left needs the owner: see [docs/deploy.md](docs/deploy.md), step 0 first. Step 9 there is the subscription setup (RevenueCat and the store products).
 - **Waiting on a decision: R2 or S3 for photos.** Cloudflare R2 doesn't support presigned POST uploads, which the app uses today. Choosing S3 needs no code change. Choosing R2 needs a small switch to presigned PUT (sign the content type and length; the bucket CORS rule already allows PUT).
 
 ## What's next
@@ -44,12 +47,14 @@ Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and 
 1. Pick a domain, with the web app and the API under it (the sign-in cookie needs a shared parent domain), and confirm the bundle ID (the code assumes `com.gettenara.family`).
 2. Neon, R2 or S3 (then `storage:setup`), Fly.io (`fly launch`, secrets, `fly deploy`), and Cloudflare Pages.
 3. Expo: `eas init` to get the project id, then set `EAS_PROJECT_ID` and the API URL in `eas.json`.
-4. Apple Developer and Google Play accounts, then TestFlight and internal testing builds through EAS.
-5. Before listings: final icons, a trademark check on "Tenara" (see docs/deploy.md step 9), a privacy policy, and the store privacy forms.
+4. Apple Developer and Google Play accounts (set `APPLE_TEAM_ID` for the widget), then TestFlight and internal testing builds through EAS.
+5. Subscriptions: the store products, RevenueCat (entitlement `pro`), the API's `REVENUECAT_*` secrets, the apps' public keys, and the webhook.
+6. Before listings: final icons, a trademark check on "Tenara" (see docs/deploy.md step 10), a privacy policy, and the store privacy forms.
 
 **Known gaps and small follow-ups:**
 
-- **Native untested:** nothing has been tried on a real phone: camera and photo-library permissions, uploads from Expo Go, swipe gestures, haptics, and pushes.
+- **Native untested:** nothing has been tried on a real phone: camera and photo-library permissions, uploads from Expo Go, swipe gestures, haptics, pushes, **purchases**, and **both widgets** (the Swift widget has never been compiled).
+- **Plans:** the app shows PRO badges and the API answers `PRO_REQUIRED`, but a locked control doesn't yet open the Pro screen on its own; the parent sees the API's message and the badge. Members added during the trial stay after it (Basic only blocks adding more).
 - **Missing app screens:** editing a catalog reward (the API supports it), paying out an old money balance after switching to points (the app offers only a correction), and ending a family goal early (starting a new one replaces it).
 - **Seed not re-run:** the demo seed (`db:seed`) was updated for points, a catalog, and a job-board job, but hasn't been re-run against a fresh database.
 - **Some tests can't run in CI:** the storage tests skip in CI because there's no storage server there, and the end-to-end tests need a built API and web app running locally.
@@ -67,6 +72,9 @@ Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and 
 - **Local storage is RustFS** (`rustfs/rustfs:1.0.4`), because MinIO no longer publishes images. Start it with `pnpm db:up`. In development the API signs photo URLs with this computer's Wi-Fi address so phones can reach them, preferring 192.168.x over VPN addresses.
 - **End-to-end tests:** rebuild the API before running them; a stale `dist` fails in confusing ways. Person switching is rate-limited per account (10 a minute), not per IP.
 - **Production mode locally:** `NODE_ENV=production` makes the API refuse development secrets and http URLs. To try the image, use an env file like `apps/api/.env.production.example` with throwaway values and https placeholders, and `host.docker.internal` for local Postgres.
+- **Test families are Pro:** `t.createFamily()` gives each test family a promotional subscription, so feature tests don't depend on the trial. Plan tests pass `{ plan: "TRIAL" | "BASIC" }`.
+- **Old local servers:** stopping a background `pnpm start` can leave the `node` process holding port 3000 (or 8081). End-to-end tests then hit the old build. Check with `netstat -ano | grep :3000` and end that process.
+- **Widgets and Expo Go:** the widget libraries have no native code in Expo Go, so they're loaded lazily and guarded. Keep it that way, or the app crashes at start in Expo Go on Android.
 - **Web sign-in cookie:** it's scoped to `/v1/auth`. In browser tools and Playwright, look it up for an `/v1/auth/...` URL, not the API root.
 - **The rules that matter most** (details in CLAUDE.md):
   - Business rules live only in `packages/domain`.
@@ -74,3 +82,4 @@ Verification for Step 11: format, lint, typecheck, and build pass; 507 unit and 
   - Rewards, XP, and badges are written only by `onApproved`.
   - Notifications are created only by `notify()` and sent only by jobs.
   - The app never decides permissions; it shows what the API allows.
+  - Plan limits live only in `packages/domain/src/plans.ts` and are enforced only through `modules/plans`.

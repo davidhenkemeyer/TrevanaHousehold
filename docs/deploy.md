@@ -4,16 +4,19 @@ This runbook covers putting the API, database, photo storage, and web app online
 
 Recommended setup for the beta (any equivalent works, since the API is a plain container):
 
-| Piece        | Service                                | Cost at beta scale    |
-| ------------ | -------------------------------------- | --------------------- |
-| Domain       | Any registrar (Cloudflare is simplest) | about $10/year        |
-| API and jobs | Fly.io, one machine                    | a few dollars a month |
-| Database     | Neon Postgres 16                       | free tier             |
-| Photos       | Cloudflare R2 (or AWS S3; see step 3)  | free tier             |
-| Web app      | Cloudflare Pages                       | free                  |
-| Phone builds | Expo EAS                               | free tier             |
-| iOS beta     | Apple Developer Program                | $99/year              |
-| Android beta | Google Play Console                    | $25 once              |
+| Piece        | Service                                | Cost at beta scale                      |
+| ------------ | -------------------------------------- | --------------------------------------- |
+| Domain       | Any registrar (Cloudflare is simplest) | about $10/year                          |
+| API and jobs | Fly.io, one machine                    | a few dollars a month                   |
+| Database     | Neon Postgres 16 (Launch plan)         | about $19/month                         |
+| Photos       | Cloudflare R2 (or AWS S3; see step 3)  | free tier                               |
+| Web app      | Cloudflare Pages                       | free                                    |
+| Phone builds | Expo EAS                               | free tier                               |
+| iOS beta     | Apple Developer Program                | $99/year                                |
+| Android beta | Google Play Console                    | $25 once                                |
+| Payments     | RevenueCat                             | free to $2.5k/month in revenue, then 1% |
+
+The database isn't free: the background-job queue checks it every few seconds, so it never pauses, and a month of the smallest size is about 180 compute-hours (Neon's free plan has 100). A cheaper alternative is Postgres on a small Fly machine with a volume (a few dollars a month, with backups up to you). The stores keep 15% of subscription revenue for small businesses (Apple's Small Business Program and Google's 15% tier both need signing up for).
 
 ## 0. Decisions to make first
 
@@ -89,8 +92,9 @@ Notes:
 ## 7. iOS beta (TestFlight)
 
 1. Join the Apple Developer Program, then create the app in App Store Connect with the bundle ID from step 0.
-2. Run `npx eas build --platform ios --profile production`. EAS creates the signing certificate and the push key (APNs) when asked.
-3. Run `npx eas submit --platform ios`, then add testers in TestFlight. Internal testers need no review; external testers need a short beta review.
+2. Set `APPLE_TEAM_ID` (Apple Developer > Membership) as an EAS environment variable: the home-screen widget is a separate target that needs it to be signed. Both the app and the widget use the App Group `group.com.gettenara.family`; EAS registers it when asked.
+3. Run `npx eas build --platform ios --profile production`. EAS creates the signing certificates (app and widget) and the push key (APNs) when asked.
+4. Run `npx eas submit --platform ios`, then add testers in TestFlight. Internal testers need no review; external testers need a short beta review.
 
 ## 8. Android beta (Play internal testing)
 
@@ -99,7 +103,20 @@ Notes:
 3. Run `npx eas build --platform android --profile production`, then `npx eas submit --platform android` to the internal testing track.
 4. New personal developer accounts must run a closed test with at least 12 testers for 14 days before a production release.
 
-## 9. Before public store listings
+## 9. Subscriptions (RevenueCat)
+
+Pro is $4.99 a month or $34.99 a year. The 14-day trial is the app's own, so don't add a store free-trial offer.
+
+1. **App Store Connect:** create a subscription group "Tenara Pro" with two auto-renewing subscriptions, `tenara_pro_monthly` ($4.99, 1 month) and `tenara_pro_yearly` ($34.99, 1 year). Fill in their display names and review screenshots (the Pro screen). Join the Small Business Program (15% instead of 30%).
+2. **Google Play Console:** create subscriptions with the same product ids and base plans (monthly and yearly).
+3. **RevenueCat:** create a project with an iOS app, an Android app, and a Web Billing app (connect Stripe for the web). Add the products, an entitlement named exactly `pro` attached to both, and a default offering with a Monthly and an Annual package.
+4. **Keys:**
+   - The API: `REVENUECAT_SECRET_KEY` (a secret API key) and `REVENUECAT_WEBHOOK_AUTH` (make up a long value such as `Bearer <random>`), with `fly secrets set`. The API won't start in production without them.
+   - The apps: the public SDK keys as `EXPO_PUBLIC_REVENUECAT_IOS_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` in `eas.json`, and `EXPO_PUBLIC_REVENUECAT_WEB_KEY` (the Web Billing key) in the web host's build settings.
+5. **Webhook:** in RevenueCat, Integrations > Webhooks: URL `https://api.<domain>/v1/billing/revenuecat`, Authorization header exactly the `REVENUECAT_WEBHOOK_AUTH` value.
+6. **Check:** in a TestFlight build (a sandbox account) and on the web (Stripe test mode), buy Pro on a family past its trial, and confirm the Family tab says "Pro · renews ...". Cancel, and confirm it says "Pro · ends ...". Give a friend-and-family account Pro with a RevenueCat "promotional" grant, never in the database.
+
+## 10. Before public store listings
 
 - **Icons:** final icons from the icon set go in `assets/brand/tenara-family/`; then run `pnpm --filter @tenara/mobile icons`.
 - **Name:** do a trademark search on "Tenara" and "Tenara Family" (USPTO; classes 9 and 42) before listings and marketing. Ask about two filings found in November 2026: a UK application for TENARA (UK00004255778, classes 36 and 42, owner not shown) and a pending US application for TENARAI (serial 99585021, Infogain, classes 35 and 42).
@@ -111,3 +128,4 @@ Notes:
 - Don't run `db:seed` against production; the real family signs up in the app.
 - Don't commit env files with real values (`.gitignore` blocks `.env*` except the examples).
 - Don't make the photo bucket public.
+- Don't edit `Subscription` rows or `trialEndsAt` by hand to give someone Pro; grant it in RevenueCat, and the webhook does the rest.

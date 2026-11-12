@@ -373,6 +373,21 @@ Adapted rather than copied:
       - App: `eas.json` profiles, `EAS_PROJECT_ID`, `usesNonExemptEncryption: false`, `expo-dev-client`, and an SPA fallback for the static web host.
       - CI also builds the API image and the web export.
     - **Open decisions (owner):** the domain (the web app and API must share a parent domain for the cookie), the bundle ID, hosting accounts, and R2 vs S3 for photos. R2 has no presigned POST, so uploads switch to presigned PUT if R2 is chosen.
+12. **Starter chores, quick setup, Basic vs Pro, widgets** (from a look at competitors such as Sweepy, Tody, OurHome, and Joon)
+    - **Decisions:**
+      - **Basic (free), generous:** the whole core loop for up to 2 parents and 3 kids: automatic scheduling, the starter list, review, points, XP, levels, badges, streaks, the daily digest, the web app, and 30 days of history.
+      - **Pro:** more parents and kids, photo proof and reference photos, real-money allowance, the rewards catalog and job board, the family goal, home-screen widgets, and full history.
+      - **Price:** $4.99 a month or $34.99 a year (set in the stores, which convert it per country). Every new family gets a **14-day Pro trial**, once.
+      - **When Pro ends, nothing is taken away:** nothing is deleted and nobody is removed. Chores keep running; photo chores stop asking for photos (the setting is kept); money stops accruing, but balances stay and payouts still work; no new job-board occurrences (open ones stay claimable); history shows 30 days (balances still count everything). Pro settings can be turned off but not on. This follows the branding rule of never taking away earned progress.
+      - **Payments:** RevenueCat on every platform: App Store and Google Play in-app purchases, Stripe (RevenueCat Web Billing) on the web. The RevenueCat customer is the family, so one subscription covers the family whoever bought it. The trial is ours (`Family.trialEndsAt`), not a store offer, so it works the same everywhere.
+      - **Widgets:** built now, tested on the first EAS development build.
+    - **As built:**
+      - Starter list: 55 chores in 8 rooms (`packages/domain/src/starterChores.ts`), each with effort, schedule, optional cue and checklist, and the youngest age group that can do it. Added chores are ordinary AUTO chores pooled to the members old enough, remembered by `Chore.templateId` so they're never added twice. Kids have an optional age group (4–6, 7–10, 11–13, 14+) that sets their default daily time.
+      - Quick setup: four steps (family, kids with ages, rooms with suggested chores ticked, rewards), then "N chores are planned for the week". Every step after the first can be skipped.
+      - Plans: rules in `packages/domain/src/plans.ts`; the API enforces them in `modules/plans` (`requirePro`, `requireRoomFor`, error `PRO_REQUIRED`). Every family response carries its plan, so the app shows PRO badges without deciding anything. Parents get one "trial ends in 3 days" notification.
+      - Billing: the RevenueCat webhook (`POST /v1/billing/revenuecat`, checked against `REVENUECAT_WEBHOOK_AUTH`) and `POST /families/:id/billing/refresh` both ask RevenueCat for the truth and store it in `Subscription`. The app's Pro screen uses `react-native-purchases` with prices from the store.
+      - Widgets: iPhone (SwiftUI, `apps/mobile/targets/widget`, via `@bacons/apple-targets`) and Android (`react-native-android-widget`), both drawn from a snapshot the Today screen writes. No API calls or tokens in the widget.
+    - **Open (owner):** the RevenueCat project and store products, `APPLE_TEAM_ID` for signing the widget, and testing purchases and widgets on real phones. See [deploy.md](deploy.md).
 
 - **Right after the MVP:** freehand drawing and 15-second voice notes in photo review.
 - **Later:** an Alexa skill (`apps/alexa`, Lambda) with OAuth account linking and intents like "what are my chores today" and "mark dishes done". Also Google Assistant/Home, and smarter scheduling (vacations, swapping chores).

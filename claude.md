@@ -31,6 +31,7 @@
 - **DB:** PostgreSQL 16 via Prisma 7 (driver adapter `@prisma/adapter-pg`, config in `apps/api/prisma.config.ts`). Jobs via pg-boss (Step 4).
 - **Auth:** argon2id password/PIN hashes (`@node-rs/argon2`), 15-min HS256 access JWTs (`jose`), rotating single-use refresh tokens stored as SHA-256 hashes. The web app gets its refresh token as an httpOnly cookie (`tenara_rt`, path `/v1/auth`) instead of in JSON.
 - **Storage / push:** S3-compatible photo storage (RustFS locally, pinned in docker-compose; MinIO no longer publishes images); Expo Push Notifications.
+- **Payments:** RevenueCat (`react-native-purchases` in the app for App Store, Google Play, and Stripe on the web; its REST API and webhook on the server). **Widgets:** `@bacons/apple-targets` (iPhone, SwiftUI) and `react-native-android-widget`.
 - **Deploy:** `apps/api/Dockerfile` (Node 24, built from the repo root) and `fly.toml`; EAS profiles in `apps/mobile/eas.json`; the web build is static. The runbook is [docs/deploy.md](docs/deploy.md).
 - **Pinned on purpose:** TypeScript `~6.0` (typescript-eslint doesn't support TS 7 yet). Prisma `7.10.1` (npm's `latest` tag points at an 8.0 release candidate). Prisma 7 officially lists Node 20/22/24 but works on 26.
 
@@ -52,6 +53,10 @@
 - **Notifications:** created only with `notify()` (`modules/notifications/service.ts`), inside the caller's transaction; it never sends anything and never tells the person who caused the event. Pushes are sent only by jobs (`jobs/notifications.ts`) through `Deps.push`; tests use the in-memory fake (`t.push`). Kinds, defaults, quiet hours, and wording live in `packages/domain/src/notifications.ts`.
 - **Job board:** `OPEN` chores create occurrences with `board: OPEN` and no assignee. `claim` / `release` go through `transition()` like any action; never change `board` or assignees for them anywhere else. Unclaimed jobs expire (`expireOpenInstance`), they don't go late.
 - **Web tokens:** requests from the web app send `X-Tenara-Client: web`. Routes that issue tokens pass them through `deliverTokens()` (`plugins/webSession.ts`), which turns the refresh token into the cookie; refresh and logout read it with `presentedRefreshToken()`. The web app never stores a token in `localStorage` (`persistable()` in `auth/session.ts`). Services return `IssuedAuth`/`IssuedTokens` (always with the refresh token); only the route decides where it goes.
+- **Plans (Basic vs Pro):** limits, features, the trial, and what pauses when Pro ends live only in `packages/domain/src/plans.ts`. The API enforces them only through `modules/plans/service.ts` (`requirePro`, `requireRoomFor`, which throw `PRO_REQUIRED`) and the downgrade helpers (`photoRequired`, `earnsCoins`, `boardOpen`, `historyStart`) at the places they apply. Pro ending never deletes or deducts anything; turning a Pro setting off is always allowed. The app shows locks from `family.plan` (`ProBadge`) and never decides. Test families are Pro unless `t.createFamily(parent, name, { plan })` says otherwise.
+- **Billing:** the RevenueCat customer id is the family id. `Subscription` rows are written only by `modules/billing/service.ts` (`syncSubscription`), which asks RevenueCat through `Deps.billing`; the webhook body only says whom to look up. Tests use the in-memory fake (`t.billing`).
+- **Widgets:** never call the API or hold a token. The Today screen writes a snapshot (`features/widgets/snapshot.ts`) and `publishWidget()` hands it over (`publish.ios.ts`: App Group; `publish.android.tsx`: storage plus a redraw; web: nothing). Native widget libraries are loaded lazily so Expo Go and the web keep working.
+- **Starter chores:** templates are data in `packages/domain/src/starterChores.ts`; adding them goes through `modules/chores/starter.ts`, which pools each chore to members old enough and skips templates the family already has (`Chore.templateId`).
 - **Production config:** `loadConfig()` refuses development secrets and non-https origins or photo URLs when `NODE_ENV=production`. A new required production setting belongs in `productionProblems()` and `.env.production.example`.
 - **Never update a chore instance's `status` directly.** Use `transition()` in `modules/instances/transitions.ts`: it applies the domain rules, rejects stale concurrent updates, writes the audit event, and releases rewards.
 - Planning (`modules/instances/generate.ts`) is idempotent. After anything that changes who should get what, call `replanUntouched()`; it only replaces occurrences nobody has touched.
@@ -61,8 +66,9 @@
 
 ```
 apps/mobile         Expo app (iOS / Android / web), Expo Router
-  app/              routes: (auth) sign-in, sign-up, pair; (app) onboarding, who, chore/[id],
-                    chore-edit/[id] ("new" creates), rewards, rewards-settings*;
+  app/              routes: (auth) sign-in, sign-up, pair; (app) onboarding (4-step setup), who,
+                    chore/[id], chore-edit/[id] ("new" creates), starter*, pro*, rewards,
+                    rewards-settings*;
                     (tabs) Today, Review*, Chores*, Family, Me
                     (* parents only)
   src/api/          typed HTTP client + one function per endpoint
@@ -70,24 +76,29 @@ apps/mobile         Expo app (iOS / Android / web), Expo Router
   src/components/   Tenara UI building blocks (ui.tsx, forms.tsx, brand.tsx, PinPad, Celebration)
   src/features/     screen logic; the pure parts are unit-tested (today/sections, chores/form,
                     review/queue, week/week, photos/pins + upload, rewards/format,
-                    progress/celebrate, notifications/settings)
+                    progress/celebrate, notifications/settings, starter/selection, setup/flow,
+                    pro/plan, widgets/snapshot)
+  targets/widget/   the iPhone widget (SwiftUI), built by @bacons/apple-targets on EAS
+  index.ts          app entry: Expo Router, plus the Android widget task
   e2e/              Playwright web smoke test (uses installed Edge)
 packages/tokens     Tenara design tokens and per-app themes
 apps/api            Fastify API + background jobs
   prisma/           schema.prisma, migrations/, seed.ts
   src/modules/      auth, families (members, kid profile switching), invites,
-                    chores, instances (planning, agenda, actions, submissions), reviews,
+                    chores (+ starter list), instances (planning, agenda, actions, submissions),
+                    reviews, plans (Basic vs Pro, trial), billing (RevenueCat webhook, refresh),
                     uploads (photo upload forms, attach checks),
                     rewards (ledger, payouts, catalog, redemptions, job board listing),
                     progress (XP, levels, streaks, badges, family goal),
                     notifications (notify, inbox, settings, devices; hooks.ts maps events)
   src/lib/storage/  PhotoStorage interface + S3 adapter (s3.test.ts runs against local storage)
   src/lib/push/     PushSender interface + Expo adapter
+  src/lib/billing/  Billing interface + RevenueCat adapter
   src/jobs/         pg-boss scheduling; planning.ts, lateness.ts, photoCleanup.ts hold the job logic
   src/worker.ts     optional standalone job worker (no HTTP)
   src/test/         test harness (useTestApp) and DB setup
 packages/domain     recurrence (+ describeRecurrence), chore state machine, scheduler and
-                    day load (summarizeDayLoad), points, defaults
+                    day load (summarizeDayLoad), points, defaults, starter chores, plans
 packages/contracts  shared Zod request/response schemas
 assets/brand/       app icons per Tenara app (SVG masters; see each folder's README)
 docs/               plan, Tenara suite notes
