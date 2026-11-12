@@ -1,6 +1,7 @@
 import { MONEY_CODES, REWARD_CURRENCIES } from "@tenara/domain";
 import { z } from "zod";
 import {
+  ageGroupSchema,
   avatarColorSchema,
   displayNameSchema,
   idSchema,
@@ -49,6 +50,8 @@ export const memberSchema = z.object({
   displayName: z.string(),
   avatarColor: z.string(),
   role: roleSchema,
+  /** Kids only; null when not set. */
+  ageGroup: ageGroupSchema.nullable(),
   capacity: weeklyCapacitySchema,
   /** Has a PIN for switching to this member on shared devices. */
   hasPin: z.boolean(),
@@ -67,6 +70,8 @@ export const createChildBodySchema = z.strictObject({
   displayName: displayNameSchema,
   avatarColor: avatarColorSchema.optional(),
   pin: pinSchema.optional(),
+  /** Sets their default daily time (when capacity isn't given) and which starter chores suit them. */
+  ageGroup: ageGroupSchema.optional(),
   capacity: weeklyCapacitySchema.optional(),
 });
 export type CreateChildBody = z.infer<typeof createChildBodySchema>;
@@ -77,6 +82,8 @@ export const updateMemberBodySchema = z
     avatarColor: avatarColorSchema,
     role: roleSchema,
     capacity: weeklyCapacitySchema,
+    /** Null clears it. Changing it doesn't change their capacity. */
+    ageGroup: ageGroupSchema.nullable(),
     /** Set a new PIN, or null to remove it. Parents use theirs to take back a shared device. */
     pin: pinSchema.nullable(),
   })

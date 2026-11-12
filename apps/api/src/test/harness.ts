@@ -12,6 +12,7 @@ import type {
   FamilyDetail,
   Member,
 } from "@tenara/contracts";
+import type { AgeGroup } from "@tenara/domain";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import { buildApp } from "../app.js";
@@ -48,7 +49,7 @@ export interface TestApp {
   addChild(
     parent: Session,
     familyId: string,
-    body?: { displayName?: string; pin?: string },
+    body?: { displayName?: string; pin?: string; ageGroup?: AgeGroup },
   ): Promise<Member>;
   switchTo(caller: Session, familyId: string, membershipId: string, pin?: string): Promise<Session>;
   /** Trades a session's refresh token for a fresh one (as the app does when access expires). */
@@ -181,7 +182,11 @@ export function useTestApp(): TestApp {
     async addChild(parent, familyId, body = {}) {
       const res = await t.request("POST", `/v1/families/${familyId}/children`, {
         session: parent,
-        body: { displayName: body.displayName ?? "Billy", ...(body.pin && { pin: body.pin }) },
+        body: {
+          displayName: body.displayName ?? "Billy",
+          ...(body.pin && { pin: body.pin }),
+          ...(body.ageGroup && { ageGroup: body.ageGroup }),
+        },
       });
       expectStatus(res, 201);
       return res.json<Member>();

@@ -108,7 +108,8 @@ export async function createChild(
   const membership = await deps.db.membership.create({
     data: {
       role: "CHILD",
-      capacity: body.capacity ?? defaultWeeklyCapacity("CHILD"),
+      ageGroup: body.ageGroup ?? null,
+      capacity: body.capacity ?? defaultWeeklyCapacity("CHILD", body.ageGroup),
       pinHash,
       family: { connect: { id: familyId } },
       user: {
@@ -186,6 +187,11 @@ export async function updateMember(
       data: {
         role: nextRole,
         ...(body.capacity !== undefined && { capacity: body.capacity }),
+        // Age groups are for kids; a parent's is always empty.
+        ...(body.ageGroup !== undefined && {
+          ageGroup: nextRole === "CHILD" ? body.ageGroup : null,
+        }),
+        ...(nextRole === "PARENT" && { ageGroup: null }),
         ...pinChange,
       },
       include: { user: true },

@@ -20,7 +20,7 @@ import { checkUploads, claimUploads } from "../uploads/service.js";
 
 type Tx = Prisma.TransactionClient;
 
-const choreInclude = {
+export const choreInclude = {
   checklist: { orderBy: { position: "asc" } },
   eligible: { orderBy: { position: "asc" } },
 } as const satisfies Prisma.ChoreInclude;
@@ -37,7 +37,7 @@ const SCHEDULING_FIELDS = [
   "rewardAmount",
 ] as const satisfies readonly (keyof UpdateChoreBody)[];
 
-async function toChoreDto(chore: ChoreRow, sign: SignPhoto): Promise<ChoreDto> {
+export async function toChoreDto(chore: ChoreRow, sign: SignPhoto): Promise<ChoreDto> {
   return {
     id: chore.id,
     name: chore.name,
@@ -56,6 +56,7 @@ async function toChoreDto(chore: ChoreRow, sign: SignPhoto): Promise<ChoreDto> {
     eligibleMembershipIds: chore.eligible.map((e) => e.membershipId),
     checklist: chore.checklist.map((i) => ({ id: i.id, text: i.text })),
     referencePhotoUrl: chore.referencePhotoKey ? await sign(chore.referencePhotoKey) : null,
+    templateId: chore.templateId,
     active: chore.active,
     createdAt: chore.createdAt.toISOString(),
     updatedAt: chore.updatedAt.toISOString(),

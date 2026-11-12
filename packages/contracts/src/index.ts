@@ -9,6 +9,7 @@ export * from "./families.js";
 export * from "./invites.js";
 export * from "./pairing.js";
 export * from "./chores.js";
+export * from "./starter.js";
 export * from "./instances.js";
 export * from "./reviews.js";
 export * from "./uploads.js";

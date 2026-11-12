@@ -1,10 +1,13 @@
 import {
+  addStarterChoresBodySchema,
+  addStarterChoresResultSchema,
   choreListQuerySchema,
   choreListSchema,
   choreParamsSchema,
   choreSchema,
   createChoreBodySchema,
   familyParamsSchema,
+  starterChoreListSchema,
   updateChoreBodySchema,
 } from "@tenara/contracts";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
@@ -12,6 +15,7 @@ import { z } from "zod";
 import type { Deps } from "../../deps.js";
 import { createAuthenticateHook } from "../../plugins/authenticate.js";
 import * as chores from "./service.js";
+import * as starter from "./starter.js";
 
 export const choreRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app, { deps }) => {
   app.addHook("onRequest", createAuthenticateHook(deps));
@@ -30,6 +34,34 @@ export const choreRoutes: FastifyPluginAsyncZod<{ deps: Deps }> = async (app, { 
         .status(201)
         .send(
           await chores.createChore(deps, request.userId, request.params.familyId, request.body),
+        ),
+  );
+
+  app.get(
+    "/families/:familyId/starter-chores",
+    { schema: { params: familyParamsSchema, response: { 200: starterChoreListSchema } } },
+    async (request) => starter.listStarterChores(deps, request.userId, request.params.familyId),
+  );
+
+  app.post(
+    "/families/:familyId/starter-chores",
+    {
+      schema: {
+        params: familyParamsSchema,
+        body: addStarterChoresBodySchema,
+        response: { 201: addStarterChoresResultSchema },
+      },
+    },
+    async (request, reply) =>
+      reply
+        .status(201)
+        .send(
+          await starter.addStarterChores(
+            deps,
+            request.userId,
+            request.params.familyId,
+            request.body,
+          ),
         ),
   );
 

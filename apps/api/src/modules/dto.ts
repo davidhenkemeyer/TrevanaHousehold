@@ -40,6 +40,7 @@ export function toMemberDto(membership: Membership & { user: User }): MemberDto 
     displayName: membership.user.displayName,
     avatarColor: membership.user.avatarColor,
     role: membership.role,
+    ageGroup: membership.ageGroup,
     // Stored as JSON; validate on the way out so a bad row fails loudly here.
     capacity: weeklyCapacitySchema.parse(membership.capacity),
     hasPin: membership.pinHash !== null,

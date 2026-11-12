@@ -139,6 +139,8 @@ export const choreSchema = z.object({
   checklist: z.array(checklistItemSchema),
   /** Signed URL of the reference ("golden standard") photo. */
   referencePhotoUrl: z.string().nullable(),
+  /** The starter chore it was made from, if any. */
+  templateId: z.string().nullable(),
   active: z.boolean(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,

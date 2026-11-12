@@ -47,6 +47,8 @@ import type {
   ReviewQueue,
   ReviewResponse,
   SignupBody,
+  StarterChoreList,
+  AddStarterChoresResult,
   SubmitBody,
   SubmitResponse,
   Tokens,
@@ -111,6 +113,12 @@ export function createApi(http: HttpClient) {
     // Chores
     createChore: (familyId: string, body: Partial<CreateChoreBody>) =>
       http.request<Chore>("POST", `${f(familyId)}/chores`, body),
+    starterChores: (familyId: string) =>
+      http.request<StarterChoreList>("GET", `${f(familyId)}/starter-chores`),
+    addStarterChores: (familyId: string, templateIds: string[]) =>
+      http.request<AddStarterChoresResult>("POST", `${f(familyId)}/starter-chores`, {
+        templateIds,
+      }),
     chores: (familyId: string, includeArchived = false) =>
       http.request<ChoreList>(
         "GET",

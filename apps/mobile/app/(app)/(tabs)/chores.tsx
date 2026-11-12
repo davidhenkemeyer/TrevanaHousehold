@@ -2,7 +2,7 @@
  * Chores (parents): the family's chores, and the week ahead.
  *
  *  - Chores: every chore with its schedule and who does it; tap to edit,
- *    "New chore" to add one.
+ *    "New chore" to add one, or pick several from the starter list.
  *  - Week: minutes of chores vs. each member's time, day by day, so parents
  *    can spot overloaded days and fix them (edit a chore or someone's time).
  */
@@ -69,18 +69,30 @@ function ChoreList() {
 
   return (
     <>
-      <Button
-        title="New chore"
-        onPress={() => router.push({ pathname: "/chore-edit/[id]", params: { id: "new" } })}
-      />
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <Button
+            title="New chore"
+            onPress={() => router.push({ pathname: "/chore-edit/[id]", params: { id: "new" } })}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            title="Starter list"
+            variant="secondary"
+            onPress={() => router.push("/starter")}
+          />
+        </View>
+      </View>
       <ErrorText message={errorMessage(chores.error)} />
       {chores.isSuccess && list.length === 0 && (
         <Card style={{ alignItems: "center", gap: spacing.sm }}>
           <AppText variant="h2">No chores yet</AppText>
           <AppText color={colors.textMuted} style={{ textAlign: "center" }}>
-            Add the first one: dishes, feeding the dog, making beds. Tenara Family spreads them
-            across the family by how much time everyone has.
+            Pick a few from the starter list (dishes, feeding the dog, making beds), or make your
+            own. Tenara Family spreads them across the family by how much time everyone has.
           </AppText>
+          <Button title="Open the starter list" onPress={() => router.push("/starter")} />
         </Card>
       )}
       {list.map((c) => (

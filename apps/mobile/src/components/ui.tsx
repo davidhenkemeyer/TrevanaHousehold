@@ -184,10 +184,13 @@ export function Checkbox({
   checked,
   label,
   onToggle,
+  mutedWhenChecked = true,
 }: {
   checked: boolean;
   label: string;
   onToggle: () => void;
+  /** Checklists grey out done items; pickers keep chosen ones readable. */
+  mutedWhenChecked?: boolean;
 }) {
   return (
     <Pressable
@@ -205,7 +208,10 @@ export function Checkbox({
       >
         {checked && <Text style={styles.tick}>✓</Text>}
       </View>
-      <AppText style={{ flex: 1 }} color={checked ? colors.textMuted : colors.text}>
+      <AppText
+        style={{ flex: 1 }}
+        color={checked && mutedWhenChecked ? colors.textMuted : colors.text}
+      >
         {label}
       </AppText>
     </Pressable>

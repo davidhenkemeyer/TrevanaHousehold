@@ -4,7 +4,7 @@
  * Input schemas normalize as they validate (e.g. emails are trimmed and
  * lowercased), so the API and every client agree on one canonical form.
  */
-import { ROLES, isValidTimeZone } from "@tenara/domain";
+import { AGE_GROUPS, ROLES, isValidTimeZone } from "@tenara/domain";
 import { z } from "zod";
 
 export const idSchema = z.uuid();
@@ -31,6 +31,9 @@ export const avatarColorSchema = z
   .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a hex value like #2563EB");
 
 export const roleSchema = z.enum(ROLES);
+
+/** Kids' age group: matches starter chores to ages and sets their default daily time. */
+export const ageGroupSchema = z.enum(AGE_GROUPS);
 
 const minutesPerDay = z.int().min(0).max(1440);
 

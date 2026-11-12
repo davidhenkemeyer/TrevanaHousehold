@@ -37,6 +37,7 @@ function chore(overrides: Partial<Chore> = {}): Chore {
     eligibleMembershipIds: [BILLY],
     checklist: [{ id: "44444444-4444-4444-8444-444444444444", text: "Rinse" }],
     referencePhotoUrl: null,
+    templateId: null,
     active: true,
     createdAt: "2026-11-01T00:00:00.000Z",
     updatedAt: "2026-11-01T00:00:00.000Z",

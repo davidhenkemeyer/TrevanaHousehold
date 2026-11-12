@@ -70,6 +70,8 @@ model Membership {
   familyId          String    @db.Uuid
   userId            String    @db.Uuid
   role              Role
+  /// Kids only, optional: matches starter chores to ages and sets default capacity.
+  ageGroup          AgeGroup?
   /// Minutes of chore time per weekday: { sun, mon, ..., sat }.
   capacity          Json
   /// Notification choices (digest time, quiet hours, per-kind delivery); null = defaults.
@@ -194,6 +196,14 @@ enum ChoreStatus {
   CANCELED
 }
 
+/// Kids' age groups (see packages/domain/src/starterChores.ts).
+enum AgeGroup {
+  LITTLE
+  KID
+  TWEEN
+  TEEN
+}
+
 enum Priority {
   LOW
   NORMAL
@@ -264,6 +274,8 @@ model Chore {
   /// "Golden standard" photo shown to kids and next to submissions in review.
   /// A storage key from the upload flow; kept until replaced or removed.
   referencePhotoKey String?
+  /// The starter chore it was made from (packages/domain/src/starterChores.ts), if any.
+  templateId        String?
   /// Archived chores stop producing occurrences; their history stays.
   active            Boolean      @default(true)
   createdById       String       @db.Uuid
@@ -277,6 +289,7 @@ model Chore {
   instances ChoreInstance[]
 
   @@index([familyId, active])
+  @@index([familyId, templateId])
 }
 
 model ChoreChecklistItem {
