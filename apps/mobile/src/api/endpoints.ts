@@ -47,6 +47,7 @@ import type {
   ReviewQueue,
   ReviewResponse,
   SignupBody,
+  Plan,
   StarterChoreList,
   AddStarterChoresResult,
   SubmitBody,
@@ -109,6 +110,10 @@ export function createApi(http: HttpClient) {
       ),
     invite: (familyId: string, body: CreateInviteBody) =>
       http.request<CreateInviteResponse>("POST", `${f(familyId)}/invites`, body),
+
+    // Plans
+    refreshBilling: (familyId: string) =>
+      http.request<Plan>("POST", `${f(familyId)}/billing/refresh`),
 
     // Chores
     createChore: (familyId: string, body: Partial<CreateChoreBody>) =>

@@ -11,6 +11,7 @@ import {
   weeklyCapacitySchema,
 } from "@tenara/contracts";
 import type { Family, Invite, Membership, User } from "../generated/prisma/client.js";
+import { type PlanRow, toPlanDto } from "./plans/service.js";
 
 export function toUserDto(user: User): UserDto {
   return {
@@ -21,7 +22,7 @@ export function toUserDto(user: User): UserDto {
   };
 }
 
-export function toFamilyDto(family: Family): FamilyDto {
+export function toFamilyDto(family: Family & PlanRow, now: Date): FamilyDto {
   return {
     id: family.id,
     name: family.name,
@@ -29,6 +30,7 @@ export function toFamilyDto(family: Family): FamilyDto {
     rewardCurrency: family.rewardCurrency,
     currencyCode: family.currencyCode,
     gamification: family.gamification,
+    plan: toPlanDto(family, now),
     createdAt: family.createdAt.toISOString(),
   };
 }

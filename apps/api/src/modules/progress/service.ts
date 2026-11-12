@@ -15,6 +15,7 @@ import { BADGES, MASTERY_BADGE, goalProgress, isMasteryKey, levelFor } from "@te
 import type { Deps } from "../../deps.js";
 import type { FamilyGoal } from "../../generated/prisma/client.js";
 import { requireMember, requireParent } from "../access.js";
+import { requirePro } from "../plans/service.js";
 import { toPerson } from "../instances/views.js";
 import { memberHistory } from "./history.js";
 
@@ -104,6 +105,7 @@ export async function startGoal(
 ): Promise<FamilyGoalDto> {
   await requireParent(deps.db, familyId, userId);
   const now = deps.now();
+  await requirePro(deps.db, familyId, now, "familyGoal");
   const goal = await deps.db.$transaction(async (tx) => {
     await tx.familyGoal.updateMany({
       where: { familyId, closedAt: null },

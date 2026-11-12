@@ -200,7 +200,7 @@ export async function reviewSubmission(
         tx,
         familyId,
         instanceId,
-        { membershipId: parent.id, role: "PARENT" },
+        { membershipId: parent.id, role: "PARENT", now: deps.now() },
         photoSigner(deps),
       ),
       review: toReviewDto(review),

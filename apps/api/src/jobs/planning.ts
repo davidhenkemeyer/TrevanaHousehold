@@ -2,11 +2,13 @@
  * Scheduled planning: keeps every family's next 7 days of occurrences in place
  * as the window rolls forward. Planning is idempotent, so this runs hourly
  * rather than at each family's local midnight: every run after midnight
- * plans the newly visible day, and the other runs create nothing.
+ * plans the newly visible day, and the other runs create nothing. It also
+ * reminds parents, once, three days before their Pro trial ends.
  */
 import type { FastifyBaseLogger } from "fastify";
 import type { Deps } from "../deps.js";
 import { planFamily } from "../modules/instances/generate.js";
+import { remindTrialEnding } from "../modules/plans/service.js";
 
 export interface PlanningSummary {
   families: number;
@@ -24,7 +26,10 @@ export async function planAllFamilies(
   for (const { id } of families) {
     try {
       // One transaction per family: a problem in one family never blocks the others.
-      const result = await deps.db.$transaction((tx) => planFamily(tx, id, deps.now()));
+      const result = await deps.db.$transaction(async (tx) => {
+        await remindTrialEnding(tx, id, deps.now());
+        return planFamily(tx, id, deps.now());
+      });
       summary.created += result.created;
       if (result.unassigned.length > 0 || result.invalidChoreIds.length > 0) {
         log.warn(

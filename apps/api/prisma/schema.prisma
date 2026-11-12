@@ -47,6 +47,8 @@ model Family {
   currencyCode   String         @default("USD")
   /// Show XP, levels, streaks, badges, and the family goal. Hiding them never deletes anything.
   gamification   Boolean        @default(true)
+  /// End of the free Pro trial (creation + 14 days). Null for families made before plans existed.
+  trialEndsAt    DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -61,6 +63,34 @@ model Family {
   xpEntries     XpEntry[]
   goals         FamilyGoal[]
   notifications Notification[]
+  subscription  Subscription?
+}
+
+/// Where a Pro subscription was bought.
+enum BillingStore {
+  APP_STORE
+  PLAY_STORE
+  /// Stripe, through RevenueCat Web Billing.
+  WEB
+  /// Granted by hand in RevenueCat (support, friends and family).
+  PROMOTIONAL
+  OTHER
+}
+
+/// A family's paid Pro status, mirrored from RevenueCat, where the customer id
+/// is the family id (so any parent's purchase covers the family). Refreshed by
+/// the webhook and after a purchase; never edited by hand.
+model Subscription {
+  familyId  String        @id @db.Uuid
+  store     BillingStore?
+  productId String?
+  /// End of the current paid period; null when Pro was never bought.
+  expiresAt DateTime?
+  /// False once they've cancelled (it still runs to expiresAt).
+  willRenew Boolean       @default(false)
+  checkedAt DateTime
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 }
 
 /// A user's place in a family: their role and capacity there. (Reward

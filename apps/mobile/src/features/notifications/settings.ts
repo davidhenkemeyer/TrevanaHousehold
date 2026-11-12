@@ -27,12 +27,13 @@ const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 /** Where tapping a notification (in the inbox or as a push) should go. */
 export function targetOf(
   n: Pick<Notification, "type" | "instanceId" | "redemptionId">,
-): { pathname: "/chore/[id]"; params: { id: string } } | "/review" | "/rewards" | null {
+): { pathname: "/chore/[id]"; params: { id: string } } | "/review" | "/rewards" | "/pro" | null {
   if (n.instanceId) return { pathname: "/chore/[id]", params: { id: n.instanceId } };
   if (n.type === "REDEMPTION_REQUESTED") return "/review";
   if (n.type === "REDEMPTION_DECIDED" || n.type === "BADGE_EARNED" || n.type === "GOAL_REACHED") {
     return "/rewards";
   }
+  if (n.type === "TRIAL_ENDING") return "/pro";
   return null;
 }
 

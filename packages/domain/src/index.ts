@@ -21,3 +21,4 @@ export * from "./assignment.js";
 export * from "./schedule.js";
 export * from "./defaults.js";
 export * from "./starterChores.js";
+export * from "./plans.js";

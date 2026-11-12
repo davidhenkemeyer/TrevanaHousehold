@@ -27,12 +27,14 @@ import {
   applyAction,
   shouldExpireOpen,
   xpFor,
+  photoRequired,
 } from "@tenara/domain";
 import { AppError, notFound } from "../../errors.js";
 import type { Membership, Prisma } from "../../generated/prisma/client.js";
 import { onTransition } from "../notifications/hooks.js";
 import { onApproved } from "../rewards/hooks.js";
 import { inPool } from "./views.js";
+import { planOf, planSelect } from "../plans/service.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -64,6 +66,7 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
   const instance = await tx.choreInstance.findFirst({
     where: { id: input.instanceId, familyId: input.familyId },
     include: {
+      family: { select: planSelect },
       chore: {
         select: {
           name: true,
@@ -88,7 +91,7 @@ export async function transition(tx: Tx, input: TransitionInput): Promise<Transi
     status: instance.status,
     actorRole: input.actor.role,
     actorIsAssignee: instance.assignees.some((a) => a.membershipId === input.actor.id),
-    requiresPhoto: instance.chore.requiresPhoto,
+    requiresPhoto: photoRequired(instance.chore, planOf(instance.family, input.now)),
     hasPhoto: input.hasPhoto ?? false,
     reviewPolicy: instance.chore.reviewPolicy,
     board: instance.board,

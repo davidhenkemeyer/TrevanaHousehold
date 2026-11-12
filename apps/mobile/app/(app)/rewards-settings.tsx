@@ -19,6 +19,7 @@ import { parseAmountInput } from "../../src/features/rewards/format";
 import { invalidateRewards, useRewards } from "../../src/features/rewards/useRewards";
 import { useApi, useFamily } from "../../src/state/AppProvider";
 import { colors, spacing } from "../../src/theme";
+import { ProBadge } from "../../src/features/pro/ProBadge";
 
 const CURRENCY_HINT: Record<RewardCurrency, string> = {
   NONE: "Chores don't earn anything. (Levels and badges arrive in a later update and work without rewards.)",
@@ -101,7 +102,11 @@ export default function RewardsSettings() {
       ) : (
         currency !== undefined && (
           <>
-            <Section title="What chores earn" hint={CURRENCY_HINT[currency]}>
+            <Section
+              title="What chores earn"
+              hint={CURRENCY_HINT[currency]}
+              badge={currency === "MONEY" ? <ProBadge feature="money" /> : undefined}
+            >
               <ChoiceChips
                 options={[
                   { value: "NONE", label: "Nothing" },
@@ -141,6 +146,7 @@ export default function RewardsSettings() {
 
             {(family.data?.family.gamification ?? true) && (
               <Section
+                badge={<ProBadge feature="familyGoal" />}
                 title="Family goal"
                 hint="Everyone's XP fills one shared bar toward something you'll do together."
               >
@@ -177,6 +183,7 @@ export default function RewardsSettings() {
 
             {currency === "POINTS" && format && (
               <Section
+                badge={<ProBadge feature="catalog" />}
                 title="Rewards to choose from"
                 hint="Kids ask for one; the points are set aside until you say yes or not now."
               >

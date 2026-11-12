@@ -27,6 +27,8 @@ import { useRewards } from "../../../src/features/rewards/useRewards";
 import { formatMinutes, weeklyTotal } from "../../../src/features/week/week";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
+import { planHeadline } from "../../../src/features/pro/plan";
+import { ProBadge, usePlan } from "../../../src/features/pro/ProBadge";
 
 export default function Family() {
   const api = useApi();
@@ -42,6 +44,10 @@ export default function Family() {
   };
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["family", familyId] });
 
+  const plan = usePlan();
+  const kidCount = (family.data?.members ?? []).filter((m) => m.role === "CHILD").length;
+  const kidsFull =
+    plan !== undefined && plan.limits.maxKids !== null && kidCount >= plan.limits.maxKids;
   const [kidName, setKidName] = useState("");
   const [kidAge, setKidAge] = useState<AgeGroup>("KID");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -166,8 +172,29 @@ export default function Family() {
 
       {isParent && (
         <>
+          {plan && (
+            <Card style={{ gap: spacing.sm }}>
+              <AppText variant="caption" color={colors.textMuted}>
+                Your plan
+              </AppText>
+              <AppText variant="h2">{planHeadline(plan, new Date())}</AppText>
+              <Button
+                title={plan.reason === "SUBSCRIPTION" ? "Manage Pro" : "See Tenara Pro"}
+                variant="secondary"
+                onPress={() => router.push("/pro")}
+              />
+            </Card>
+          )}
           <Card style={{ gap: spacing.md }}>
-            <AppText variant="h2">Add a kid</AppText>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <AppText variant="h2">Add a kid</AppText>
+              {kidsFull && <ProBadge feature="extraMembers" />}
+            </View>
+            {kidsFull && (
+              <AppText color={colors.textMuted}>
+                Basic includes up to {plan?.limits.maxKids} kids. Tenara Pro has room for more.
+              </AppText>
+            )}
             <AppText color={colors.textMuted}>
               Kids don't need an email. They can use this device, or their own phone with a setup
               code.

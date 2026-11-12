@@ -18,7 +18,7 @@ import type {
   UpdateFamilyBody,
   UpdateMemberBody,
 } from "@tenara/contracts";
-import { defaultAvatarColor, defaultWeeklyCapacity } from "@tenara/domain";
+import { defaultAvatarColor, defaultWeeklyCapacity, trialEndsAtFor } from "@tenara/domain";
 import type { Deps } from "../../deps.js";
 import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from "../../errors.js";
 import type { Prisma } from "../../generated/prisma/client.js";
@@ -27,6 +27,7 @@ import { requireMember, requireParent } from "../access.js";
 import { type IssuedAuth, issueSession, revokeAllSessions } from "../auth/sessions.js";
 import { replanUntouched } from "../instances/generate.js";
 import { toFamilyDto, toMemberDto, toUserDto } from "../dto.js";
+import { planSelect, requirePro, requireRoomFor } from "../plans/service.js";
 
 /** Wrong PINs allowed before the profile locks, and for how long. */
 export const PIN_MAX_ATTEMPTS = 5;
@@ -40,7 +41,9 @@ export async function createFamily(
   body: CreateFamilyBody,
 ): Promise<FamilyDetail> {
   const familyId = await deps.db.$transaction(async (tx) => {
-    const family = await tx.family.create({ data: { name: body.name, timeZone: body.timeZone } });
+    const family = await tx.family.create({
+      data: { name: body.name, timeZone: body.timeZone, trialEndsAt: trialEndsAtFor(deps.now()) },
+    });
     await tx.membership.create({
       data: {
         familyId: family.id,
@@ -63,6 +66,7 @@ export async function getFamily(
   const family = await deps.db.family.findUniqueOrThrow({
     where: { id: familyId },
     include: {
+      subscription: planSelect.subscription,
       memberships: {
         where: { active: true },
         include: { user: true },
@@ -70,7 +74,7 @@ export async function getFamily(
       },
     },
   });
-  return { family: toFamilyDto(family), members: family.memberships.map(toMemberDto) };
+  return { family: toFamilyDto(family, deps.now()), members: family.memberships.map(toMemberDto) };
 }
 
 export async function updateFamily(
@@ -80,6 +84,7 @@ export async function updateFamily(
   body: UpdateFamilyBody,
 ): Promise<FamilyDetail> {
   await requireParent(deps.db, familyId, userId);
+  if (body.rewardCurrency === "MONEY") await requirePro(deps.db, familyId, deps.now(), "money");
   await deps.db.family.update({
     where: { id: familyId },
     data: {
@@ -103,6 +108,7 @@ export async function createChild(
   body: CreateChildBody,
 ): Promise<Member> {
   await requireParent(deps.db, familyId, userId);
+  await requireRoomFor(deps.db, familyId, deps.now(), "CHILD");
   const memberCount = await deps.db.membership.count({ where: { familyId } });
   const pinHash = body.pin === undefined ? null : await hashSecret(body.pin);
   const membership = await deps.db.membership.create({
@@ -156,6 +162,7 @@ export async function updateMember(
     const nextRole = body.role ?? target.role;
 
     if (nextRole === "PARENT" && target.role === "CHILD") {
+      await requireRoomFor(tx, familyId, deps.now(), "PARENT");
       if (!target.user.email || !target.user.passwordHash) {
         throw badRequest(
           "ROLE_REQUIRES_LOGIN",

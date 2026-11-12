@@ -15,6 +15,9 @@ import {
   type PlainDate,
   addDays,
   daysBetween,
+  historyStart,
+  instantToPlainDate,
+  maxDate,
   priorityRank,
   summarizeDayLoad,
 } from "@tenara/domain";
@@ -39,6 +42,7 @@ import {
   toInstanceDto,
   toSubmissionDto,
 } from "./views.js";
+import { loadPlan } from "../plans/service.js";
 
 /** Not finished yet: shown on the Today view even if dated earlier. */
 const OUTSTANDING: ChoreStatus[] = [
@@ -50,7 +54,11 @@ const OUTSTANDING: ChoreStatus[] = [
 ];
 const MAX_LIST_RANGE_DAYS = 62;
 
-const viewerOf = (m: Membership): Viewer => ({ membershipId: m.id, role: m.role });
+const viewerOf = (m: Membership, now: Date): Viewer => ({
+  membershipId: m.id,
+  role: m.role,
+  now,
+});
 
 const assignedTo = (memberId: string | undefined): Prisma.ChoreInstanceWhereInput =>
   memberId === undefined ? {} : { assignees: { some: { membershipId: memberId } } };
@@ -93,7 +101,7 @@ export async function getAgenda(
     },
     include: instanceInclude,
   });
-  const viewer = viewerOf(member);
+  const viewer = viewerOf(member, deps.now());
   const sign = photoSigner(deps);
   const items = (await Promise.all(rows.map((row) => toInstanceDto(row, viewer, sign)))).sort(
     (a, b) =>
@@ -128,13 +136,20 @@ export async function listInstances(
     throw badRequest("RANGE_TOO_LARGE", `Ask for at most ${MAX_LIST_RANGE_DAYS} days at a time.`);
   }
   const after = decodeCursor(query.cursor, listCursorSchema);
+  // Basic keeps 30 days of history; anything earlier is simply not listed.
+  const start = historyStart(await loadPlan(deps.db, familyId, deps.now()), deps.now());
+  let first = from;
+  if (start) {
+    const { timeZone } = await familyToday(deps.db, familyId, deps.now());
+    first = maxDate(from, instantToPlainDate(start, timeZone));
+  }
 
   const rows = await deps.db.choreInstance.findMany({
     where: {
       familyId,
       ...assignedTo(query.memberId),
       ...(query.status !== undefined && { status: query.status }),
-      occurrenceDate: { gte: plainToDbDate(from), lte: plainToDbDate(to) },
+      occurrenceDate: { gte: plainToDbDate(first), lte: plainToDbDate(to) },
       ...(after && {
         OR: [
           { occurrenceDate: { gt: new Date(after.d) } },
@@ -148,7 +163,7 @@ export async function listInstances(
   });
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
-  const viewer = viewerOf(member);
+  const viewer = viewerOf(member, deps.now());
   return {
     items: await Promise.all(page.map((row) => toInstanceDto(row, viewer, photoSigner(deps)))),
     nextCursor:
@@ -171,7 +186,7 @@ export async function getInstanceDetail(
     deps.db.choreInstance.findFirst({ where, include: detailExtras }),
   ]);
   if (!row || !history) throw notFound("INSTANCE_NOT_FOUND", "Chore not found.");
-  return toInstanceDetailDto(row, history, viewerOf(member), photoSigner(deps));
+  return toInstanceDetailDto(row, history, viewerOf(member, deps.now()), photoSigner(deps));
 }
 
 /** start / defer / reset / cancel. */
@@ -191,7 +206,7 @@ export async function actOnInstance(
       actor: member,
       now: deps.now(),
     });
-    return loadInstance(tx, familyId, instanceId, viewerOf(member), photoSigner(deps));
+    return loadInstance(tx, familyId, instanceId, viewerOf(member, deps.now()), photoSigner(deps));
   });
 }
 
@@ -274,7 +289,7 @@ export async function submitInstance(
     });
     const sign = photoSigner(deps);
     return {
-      instance: await loadInstance(tx, familyId, instanceId, viewerOf(member), sign),
+      instance: await loadInstance(tx, familyId, instanceId, viewerOf(member, deps.now()), sign),
       submission: await toSubmissionDto(fullSubmission, sign),
     };
   });

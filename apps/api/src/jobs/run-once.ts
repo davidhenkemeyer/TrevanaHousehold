@@ -6,6 +6,7 @@ import pino from "pino";
 import { loadConfig } from "../config.js";
 import { createDb } from "../db.js";
 import { createExpoPush } from "../lib/push/expo.js";
+import { createRevenueCatBilling } from "../lib/billing/revenuecat.js";
 import { createS3Storage } from "../lib/storage/s3.js";
 import { checkPushReceipts, sendDigests, sendInstantNotifications } from "./notifications.js";
 import { expireOpenJobs, markLateInstances } from "./lateness.js";
@@ -21,6 +22,7 @@ const deps = {
   db,
   storage: createS3Storage(config.storage),
   push: createExpoPush(config.expoAccessToken),
+  billing: createRevenueCatBilling(config.billing.revenueCatSecretKey),
   now: () => new Date(),
 };
 

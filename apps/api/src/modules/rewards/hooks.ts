@@ -14,10 +14,11 @@
  * Unique constraints plus `skipDuplicates` make every step safe to repeat.
  * XP and badges are recorded even when the family hides them.
  */
-import { earnedBadges, earnings, goalProgress } from "@tenara/domain";
+import { earnedBadges, earnings, goalProgress, earnsCoins } from "@tenara/domain";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { everyoneIn, notify } from "../notifications/service.js";
 import { memberHistory } from "../progress/history.js";
+import { planOf, planSelect } from "../plans/service.js";
 
 export interface ApprovedInstance {
   id: string;
@@ -36,14 +37,15 @@ export async function onApproved(
 ): Promise<void> {
   const family = await tx.family.findUniqueOrThrow({
     where: { id: instance.familyId },
-    select: { rewardCurrency: true, currencyCode: true, timeZone: true },
+    select: { rewardCurrency: true, currencyCode: true, timeZone: true, ...planSelect },
   });
+  // Real money is Pro; once Pro ends, money chores still earn XP but no coins.
+  const paysCoins = earnsCoins(family.rewardCurrency, planOf(family, now));
 
   // 1. Coins.
-  const shares =
-    family.rewardCurrency === "NONE"
-      ? new Map<string, number>()
-      : earnings(instance.rewardAmount, instance.assigneeIds);
+  const shares = !paysCoins
+    ? new Map<string, number>()
+    : earnings(instance.rewardAmount, instance.assigneeIds);
   if (shares.size > 0) {
     await tx.ledgerEntry.createMany({
       data: [...shares].map(([membershipId, amount]) => ({

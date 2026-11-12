@@ -23,6 +23,7 @@ import {
   visibleRooms,
 } from "../starter/selection";
 import { AGE_GROUP_OPTIONS, DEFAULT_ROOMS, describeKidTime, toggleRoom } from "./flow";
+import { ProBadge } from "../pro/ProBadge";
 
 /** Back / Skip on the left, the main action on the right. */
 export function StepFooter({
@@ -243,6 +244,7 @@ export function RewardsStep({
   return (
     <>
       <Section
+        badge={currency === "MONEY" ? <ProBadge feature="money" /> : undefined}
         title="What do chores earn?"
         hint="Routine chores earn XP either way. Extra jobs earn this too."
       >

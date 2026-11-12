@@ -6,7 +6,12 @@
  *   Parents sign in with mom@example.com / dad@example.com, password "chores-demo-password".
  *   Billy's PIN is 1111, Sally's is 2222.
  */
-import { defaultAvatarColor, defaultWeeklyCapacity, instantToPlainDate } from "@tenara/domain";
+import {
+  defaultAvatarColor,
+  defaultWeeklyCapacity,
+  instantToPlainDate,
+  trialEndsAtFor,
+} from "@tenara/domain";
 import { createDb } from "../src/db.js";
 import { hashSecret } from "../src/lib/secrets.js";
 import { planFamily } from "../src/modules/instances/generate.js";
@@ -23,7 +28,13 @@ try {
   } else {
     const passwordHash = await hashSecret(DEMO_PASSWORD);
     const family = await db.family.create({
-      data: { name: "The Example Family", timeZone: "America/Chicago", rewardCurrency: "POINTS" },
+      data: {
+        name: "The Example Family",
+        timeZone: "America/Chicago",
+        rewardCurrency: "POINTS",
+        // A new family: on the 14-day Pro trial.
+        trialEndsAt: trialEndsAtFor(new Date()),
+      },
     });
     let momId = "";
     const people = [

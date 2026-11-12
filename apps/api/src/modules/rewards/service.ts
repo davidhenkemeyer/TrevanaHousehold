@@ -35,6 +35,7 @@ import {
   canRedeem,
   earnings,
   formatAmount,
+  historyStart,
 } from "@tenara/domain";
 import { z } from "zod";
 import type { Deps } from "../../deps.js";
@@ -42,6 +43,7 @@ import { AppError, conflict, forbidden, notFound } from "../../errors.js";
 import type { Membership, Prisma, RewardItem } from "../../generated/prisma/client.js";
 import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
 import { requireMember, requireParent } from "../access.js";
+import { loadPlan, requirePro } from "../plans/service.js";
 import { displayNameOf, notify, parentsOf } from "../notifications/service.js";
 import {
   inPool,
@@ -178,10 +180,13 @@ export async function getLedger(
     await findMember(deps.db, familyId, memberId);
   }
   const after = decodeCursor(query.cursor, ledgerCursorSchema);
+  // Basic shows 30 days of history (balances still count everything).
+  const start = historyStart(await loadPlan(deps.db, familyId, deps.now()), deps.now());
   const rows = await deps.db.ledgerEntry.findMany({
     where: {
       familyId,
       membershipId: memberId,
+      ...(start && { createdAt: { gte: start } }),
       ...(after && {
         OR: [
           { createdAt: { lt: new Date(after.t) } },
@@ -303,6 +308,7 @@ export async function createRewardItem(
   body: CreateRewardItemBody,
 ): Promise<RewardItemDto> {
   await requireParent(deps.db, familyId, userId);
+  await requirePro(deps.db, familyId, deps.now(), "catalog");
   return toItemDto(await deps.db.rewardItem.create({ data: { familyId, ...body } }));
 }
 
@@ -320,6 +326,7 @@ export async function updateRewardItem(
   body: UpdateRewardItemBody,
 ): Promise<RewardItemDto> {
   await requireParent(deps.db, familyId, userId);
+  await requirePro(deps.db, familyId, deps.now(), "catalog");
   await findItem(deps.db, familyId, itemId);
   return toItemDto(
     await deps.db.rewardItem.update({
@@ -571,7 +578,9 @@ export async function getJobBoard(deps: Deps, userId: string, familyId: string):
   const mine = rows.filter((row) => inPool(row.chore.eligible, viewer.id));
   return {
     items: await Promise.all(
-      mine.map((row) => toInstanceDto(row, { membershipId: viewer.id, role: viewer.role }, sign)),
+      mine.map((row) =>
+        toInstanceDto(row, { membershipId: viewer.id, role: viewer.role, now: deps.now() }, sign),
+      ),
     ),
   };
 }

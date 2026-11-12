@@ -14,6 +14,8 @@ import { z } from "zod";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { Deps } from "../../deps.js";
 import { dbDateToPlain } from "../../lib/dates.js";
+import { photoRequired } from "@tenara/domain";
+import { planOf, planSelect } from "../plans/service.js";
 
 /** Turns a storage key into a short-lived signed URL. Keys never leave the API. */
 export type SignPhoto = (key: string) => Promise<string>;
@@ -25,6 +27,8 @@ export function photoSigner(deps: Pick<Deps, "storage" | "now">): SignPhoto {
 const memberWithUser = { include: { user: true } } as const;
 
 export const instanceInclude = {
+  // Whether the family is on Pro (photo proof pauses on Basic).
+  family: { select: planSelect },
   chore: {
     include: {
       checklist: { orderBy: { position: "asc" } },
@@ -61,6 +65,8 @@ export type DetailExtrasRow = Prisma.ChoreInstanceGetPayload<{ include: typeof d
 export interface Viewer {
   membershipId: string;
   role: Role;
+  /** The request's time, for the family's plan. */
+  now: Date;
 }
 
 type MemberWithUser = Prisma.MembershipGetPayload<typeof memberWithUser>;
@@ -121,6 +127,8 @@ export async function toInstanceDto(
   viewer: Viewer,
   sign: SignPhoto,
 ): Promise<Instance> {
+  // Photo proof is Pro: on Basic the chore's setting is kept but not asked for.
+  const photosAsked = photoRequired(row.chore, planOf(row.family, viewer.now));
   const latestReview = row.submissions[0]?.reviews[0];
   return {
     id: row.id,
@@ -139,7 +147,7 @@ export async function toInstanceDto(
     effortMinutes: row.effortMinutes,
     rewardAmount: row.rewardAmount,
     xp: xpFor(row.effortMinutes, row.chore.xpOverride),
-    requiresPhoto: row.chore.requiresPhoto,
+    requiresPhoto: photosAsked,
     referencePhotoUrl: row.chore.referencePhotoKey ? await sign(row.chore.referencePhotoKey) : null,
     reviewPolicy: row.chore.reviewPolicy,
     checklist: row.chore.checklist.map((i) => ({ id: i.id, text: i.text })),
@@ -148,7 +156,7 @@ export async function toInstanceDto(
       status: row.status,
       actorRole: viewer.role,
       actorIsAssignee: row.assignees.some((a) => a.membershipId === viewer.membershipId),
-      requiresPhoto: row.chore.requiresPhoto,
+      requiresPhoto: photosAsked,
       // The photo is attached in the same request as "complete", so the button
       // shows either way; the app asks for the photo first.
       hasPhoto: false,

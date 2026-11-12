@@ -19,6 +19,7 @@ import { buildApp } from "../app.js";
 import type { IssuedAuth, IssuedTokens } from "../modules/auth/sessions.js";
 import { type AppConfig, loadConfig } from "../config.js";
 import { type Db, createDb } from "../db.js";
+import { type FakeBilling, createFakeBilling } from "./fakeBilling.js";
 import { type FakePush, createFakePush } from "./fakePush.js";
 import { type FakeStorage, createFakeStorage } from "./fakeStorage.js";
 import { testDatabaseUrl } from "./testDatabase.js";
@@ -37,6 +38,8 @@ export interface TestApp {
   storage: FakeStorage;
   /** In-memory push sender: what jobs would have sent (reset before each test). */
   push: FakePush;
+  /** In-memory RevenueCat: set entitlements by family id (reset before each test). */
+  billing: FakeBilling;
   /** Moves the app's clock forward. */
   advance(ms: number): void;
   request(
@@ -45,7 +48,16 @@ export interface TestApp {
     options?: { body?: unknown; session?: Session },
   ): Promise<LightMyRequestResponse>;
   signup(overrides?: { email?: string; displayName?: string; password?: string }): Promise<Session>;
-  createFamily(parent: Session, name?: string): Promise<FamilyDetail>;
+  /**
+   * Creates a family. Test families are on Pro (a promotional subscription to
+   * 2100) so feature tests don't depend on the trial; pass `plan` to test plans.
+   * TRIAL: just the 14-day trial; BASIC: trial already over, never subscribed.
+   */
+  createFamily(
+    parent: Session,
+    name?: string,
+    options?: { plan?: "PRO" | "TRIAL" | "BASIC" },
+  ): Promise<FamilyDetail>;
   addChild(
     parent: Session,
     familyId: string,
@@ -78,6 +90,8 @@ export const DEFAULT_CHORE = {
 } as const;
 
 export const PASSWORD = "correct horse battery";
+/** The Authorization value the test server expects on RevenueCat webhooks. */
+export const WEBHOOK_AUTH = "Bearer test-webhook-secret-0123456789";
 export const minutes = (n: number) => n * 60_000;
 export const days = (n: number) => n * 86_400_000;
 
@@ -108,6 +122,7 @@ export function useTestApp(): TestApp {
   let emailCounter = 0;
   const storage = createFakeStorage();
   const push = createFakePush();
+  const billing = createFakeBilling();
 
   beforeAll(async () => {
     const config: AppConfig = {
@@ -115,11 +130,12 @@ export function useTestApp(): TestApp {
         DATABASE_URL: testDatabaseUrl(),
         JWT_SECRET: "test-secret-that-is-at-least-32-characters-long",
         LOG_LEVEL: "silent",
+        REVENUECAT_WEBHOOK_AUTH: WEBHOOK_AUTH,
       }),
       rateLimitEnabled: false,
     };
     db = createDb(config.databaseUrl);
-    app = await buildApp({ config, db, now: () => now, storage, push });
+    app = await buildApp({ config, db, now: () => now, storage, push, billing });
     await app.ready();
   });
 
@@ -131,6 +147,8 @@ export function useTestApp(): TestApp {
     push.receiptsById.clear();
     push.receiptRequests.length = 0;
     push.dead.clear();
+    billing.entitlements.clear();
+    billing.lookups.length = 0;
     await truncateAll(db);
   });
 
@@ -148,6 +166,7 @@ export function useTestApp(): TestApp {
     },
     storage,
     push,
+    billing,
     advance(ms) {
       now = new Date(now.getTime() + ms);
     },
@@ -171,13 +190,31 @@ export function useTestApp(): TestApp {
       expectStatus(res, 201);
       return asSession(res.json<IssuedAuth>());
     },
-    async createFamily(parent, name = "The Testers") {
+    async createFamily(parent, name = "The Testers", options = {}) {
       const res = await t.request("POST", "/v1/families", {
         session: parent,
         body: { name, timeZone: "America/Chicago" },
       });
       expectStatus(res, 201);
-      return res.json<FamilyDetail>();
+      const created = res.json<FamilyDetail>();
+      const familyId = created.family.id;
+      const plan = options.plan ?? "PRO";
+      if (plan === "TRIAL") return created;
+      if (plan === "BASIC") {
+        await db.family.update({ where: { id: familyId }, data: { trialEndsAt: now } });
+      } else {
+        await db.subscription.create({
+          data: {
+            familyId,
+            store: "PROMOTIONAL",
+            expiresAt: new Date("2100-01-01T00:00:00Z"),
+            checkedAt: now,
+          },
+        });
+      }
+      const again = await t.request("GET", `/v1/families/${familyId}`, { session: parent });
+      expectStatus(again, 200);
+      return again.json<FamilyDetail>();
     },
     async addChild(parent, familyId, body = {}) {
       const res = await t.request("POST", `/v1/families/${familyId}/children`, {

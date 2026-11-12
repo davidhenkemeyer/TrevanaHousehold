@@ -12,18 +12,24 @@ import { AppText, Card } from "./ui";
 export function Section({
   title,
   hint,
+  badge,
   children,
 }: {
   title: string;
   hint?: string;
+  /** Shown after the title, e.g. a PRO tag. */
+  badge?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <Card style={{ gap: spacing.md }}>
       <View style={{ gap: spacing.xxs }}>
-        <AppText variant="h2" accessibilityRole="header">
-          {title}
-        </AppText>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <AppText variant="h2" accessibilityRole="header">
+            {title}
+          </AppText>
+          {badge}
+        </View>
         {hint !== undefined && (
           <AppText variant="caption" color={colors.textMuted}>
             {hint}

@@ -12,6 +12,8 @@ import {
   weeklyCapacitySchema,
 } from "./common.js";
 
+import { planSchema } from "./plans.js";
+
 const familyNameSchema = z.string().trim().min(1).max(60);
 
 export const createFamilyBodySchema = z.strictObject({
@@ -39,6 +41,8 @@ export const familySchema = z.object({
   rewardCurrency: z.enum(REWARD_CURRENCIES),
   currencyCode: z.string(),
   gamification: z.boolean(),
+  /** Basic or Pro, and what that includes right now. */
+  plan: planSchema,
   createdAt: isoDateTimeSchema,
 });
 export type Family = z.infer<typeof familySchema>;

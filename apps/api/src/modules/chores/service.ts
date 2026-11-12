@@ -17,6 +17,20 @@ import { familyToday, planFamily, removeUntouchedFuture } from "../instances/gen
 import { type SignPhoto, photoSigner } from "../instances/views.js";
 import { displayNameOf, notify } from "../notifications/service.js";
 import { checkUploads, claimUploads } from "../uploads/service.js";
+import { requirePro } from "../plans/service.js";
+
+/** Pro features a create or update turns on (turning them off is always allowed). */
+async function requireProFor(
+  db: Deps["db"],
+  familyId: string,
+  now: Date,
+  body: Pick<UpdateChoreBody, "requiresPhoto" | "referencePhotoUploadId" | "assignMode">,
+): Promise<void> {
+  if (body.requiresPhoto === true || typeof body.referencePhotoUploadId === "string") {
+    await requirePro(db, familyId, now, "photos");
+  }
+  if (body.assignMode === "OPEN") await requirePro(db, familyId, now, "jobBoard");
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -100,6 +114,7 @@ export async function createChore(
   body: CreateChoreBody,
 ): Promise<ChoreDto> {
   const parent = await requireParent(deps.db, familyId, userId);
+  await requireProFor(deps.db, familyId, deps.now(), body);
   const [photo] = await checkUploads(deps, {
     familyId,
     member: parent,
@@ -186,6 +201,7 @@ export async function updateChore(
   body: UpdateChoreBody,
 ): Promise<ChoreDto> {
   const parent = await requireParent(deps.db, familyId, userId);
+  await requireProFor(deps.db, familyId, deps.now(), body);
   // A replaced or removed reference photo is deleted later by the cleanup job.
   const [photo] = await checkUploads(deps, {
     familyId,

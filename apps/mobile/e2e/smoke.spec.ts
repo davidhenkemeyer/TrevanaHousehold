@@ -747,3 +747,27 @@ test("quick setup: kids by age and starter chores, planned in one go", async ({ 
   await expect(text(page, "Make your bed", true)).toBeVisible();
   await expect(text(page, "Feed the pet (morning)", true)).toBeVisible();
 });
+
+test("plans: a new family is on the Pro trial and can see what Pro adds", async ({ page }) => {
+  const email = `e2e-pro-${Date.now()}@example.com`;
+  await page.goto("/");
+  await text(page, "New here? Create a family account").click();
+  await field(page, "Your name").fill("Mom");
+  await field(page, "Email").fill(email);
+  await field(page, "Password (at least 8 characters)").fill("correct horse battery");
+  await button(page, "Create account").click();
+  await field(page, "Family name").fill("The Trials");
+  await button(page, "Create family").click();
+  await button(page, "Skip").click(); // kids
+  await button(page, "Skip").click(); // rooms
+  await button(page, "Skip").click(); // rewards
+  await button(page, "Invite the other parent").click();
+
+  await expect(text(page, "Pro trial · 14 days left", true)).toBeVisible();
+  await button(page, "See Tenara Pro").click();
+  await expect(text(page, "Photo proof", true)).toBeVisible();
+  await expect(text(page, "Basic, free forever", true)).toBeVisible();
+  // This local build has no RevenueCat key.
+  await expect(text(page, "Purchases aren't set up in this build of the app yet.")).toBeVisible();
+  await shot(page, "70-pro");
+});

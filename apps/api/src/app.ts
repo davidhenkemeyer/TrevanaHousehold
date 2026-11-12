@@ -18,6 +18,8 @@ import type { Deps } from "./deps.js";
 import { registerErrorHandling } from "./errors.js";
 import { createAccessTokenService } from "./lib/accessTokens.js";
 import { createExpoPush } from "./lib/push/expo.js";
+import { createRevenueCatBilling } from "./lib/billing/revenuecat.js";
+import type { Billing } from "./lib/billing/types.js";
 import type { PushSender } from "./lib/push/types.js";
 import { createS3Storage } from "./lib/storage/s3.js";
 import type { PhotoStorage } from "./lib/storage/types.js";
@@ -32,6 +34,7 @@ import { progressRoutes } from "./modules/progress/routes.js";
 import { rewardRoutes } from "./modules/rewards/routes.js";
 import { familyRoutes } from "./modules/families/routes.js";
 import { inviteRoutes } from "./modules/invites/routes.js";
+import { billingRoutes, billingWebhookRoutes } from "./modules/billing/routes.js";
 
 export interface BuildAppOptions {
   config: AppConfig;
@@ -41,6 +44,8 @@ export interface BuildAppOptions {
   storage?: PhotoStorage;
   /** Default: Expo push. Tests pass an in-memory fake. */
   push?: PushSender;
+  /** Default: RevenueCat. Tests pass an in-memory fake. */
+  billing?: Billing;
 }
 
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
@@ -51,6 +56,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     accessTokens: createAccessTokenService(config.jwtSecret, config.accessTokenTtlSeconds),
     storage: options.storage ?? createS3Storage(config.storage),
     push: options.push ?? createExpoPush(config.expoAccessToken),
+    billing: options.billing ?? createRevenueCatBilling(config.billing.revenueCatSecretKey),
     now: options.now ?? (() => new Date()),
   };
 
@@ -124,6 +130,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       await v1.register(rewardRoutes, { deps });
       await v1.register(progressRoutes, { deps });
       await v1.register(notificationRoutes, { deps });
+      await v1.register(billingRoutes, { deps });
+      await v1.register(billingWebhookRoutes, { deps });
     },
     { prefix: "/v1" },
   );

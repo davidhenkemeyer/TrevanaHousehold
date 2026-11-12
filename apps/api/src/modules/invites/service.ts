@@ -15,6 +15,7 @@ import type { Deps } from "../../deps.js";
 import { badRequest, conflict, forbidden, notFound } from "../../errors.js";
 import { randomToken, sha256 } from "../../lib/secrets.js";
 import { requireParent } from "../access.js";
+import { requireRoomFor } from "../plans/service.js";
 import { toInviteDto } from "../dto.js";
 
 const MS_PER_DAY = 86_400_000;
@@ -30,6 +31,7 @@ export async function createInvite(
 ): Promise<CreateInviteResponse> {
   await requireParent(deps.db, familyId, userId);
   const now = deps.now();
+  await requireRoomFor(deps.db, familyId, now, body.role);
 
   const existingMember = await deps.db.membership.findFirst({
     where: { familyId, active: true, user: { email: body.email } },
@@ -122,6 +124,8 @@ export async function acceptInvite(
     if (existing?.active) {
       throw conflict("ALREADY_MEMBER", "You're already in this family.");
     }
+    // The family may have filled up (or Pro ended) since the invite was sent.
+    await requireRoomFor(tx, invite.familyId, now, invite.role);
     if (existing) {
       // Rejoining after being removed: keep their old capacity and points.
       return tx.membership.update({

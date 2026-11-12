@@ -21,6 +21,8 @@ describe("production configuration", () => {
     S3_PUBLIC_URL: "https://account.r2.cloudflarestorage.com",
     S3_ACCESS_KEY: "key",
     S3_SECRET_KEY: "a-real-storage-secret",
+    REVENUECAT_SECRET_KEY: "sk_live_example",
+    REVENUECAT_WEBHOOK_AUTH: "Bearer a-long-webhook-secret",
   };
 
   it("accepts a complete production setup", () => {
@@ -28,6 +30,10 @@ describe("production configuration", () => {
     expect(config.cookieSecure).toBe(true);
     expect(config.storage.createBucket).toBe(false);
     expect(config.trustProxy).toBe(false);
+    expect(config.billing).toEqual({
+      revenueCatSecretKey: "sk_live_example",
+      webhookAuth: "Bearer a-long-webhook-secret",
+    });
   });
 
   it("refuses development defaults and missing settings, listing every problem", () => {
@@ -38,8 +44,12 @@ describe("production configuration", () => {
         S3_SECRET_KEY: "chores-dev-secret",
         CORS_ORIGINS: "",
         S3_PUBLIC_URL: undefined,
+        REVENUECAT_SECRET_KEY: undefined,
+        REVENUECAT_WEBHOOK_AUTH: undefined,
       });
     expect(run).toThrow(/JWT_SECRET/);
+    expect(run).toThrow(/REVENUECAT_SECRET_KEY/);
+    expect(run).toThrow(/REVENUECAT_WEBHOOK_AUTH/);
     expect(run).toThrow(/S3_SECRET_KEY/);
     expect(run).toThrow(/CORS_ORIGINS/);
     expect(run).toThrow(/S3_PUBLIC_URL/);

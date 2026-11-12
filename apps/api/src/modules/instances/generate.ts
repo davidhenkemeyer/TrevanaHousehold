@@ -23,10 +23,12 @@ import {
   occurrenceKey,
   planAssignments,
   planningWindow,
+  boardOpen,
 } from "@tenara/domain";
 import type { Db } from "../../db.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { dbDateToPlain, plainToDbDate } from "../../lib/dates.js";
+import { loadPlan } from "../plans/service.js";
 
 export type DbOrTx = Db | Prisma.TransactionClient;
 
@@ -97,8 +99,10 @@ export async function planFamily(db: DbOrTx, familyId: string, now: Date): Promi
 
   // Sequential on purpose: this usually runs inside a transaction, which has a
   // single connection, and parallel queries on one pg connection are deprecated.
+  // The job board is Pro: on Basic, open jobs already posted stay, but no new ones.
+  const board = boardOpen(await loadPlan(db, familyId, now));
   const chores = await db.chore.findMany({
-    where: { familyId, active: true },
+    where: { familyId, active: true, ...(!board && { assignMode: { not: "OPEN" } }) },
     include: { eligible: { orderBy: { position: "asc" } } },
   });
   const members = await db.membership.findMany({

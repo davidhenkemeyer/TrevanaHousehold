@@ -66,6 +66,7 @@ import { amountInputValue, parseAmountInput } from "../../../src/features/reward
 import { invalidateRewards, useRewards } from "../../../src/features/rewards/useRewards";
 import { useApi, useFamily } from "../../../src/state/AppProvider";
 import { colors, spacing } from "../../../src/theme";
+import { ProBadge } from "../../../src/features/pro/ProBadge";
 
 const FREQ_LABEL: Record<Frequency, string> = {
   ONCE: "Once",
@@ -435,7 +436,11 @@ export default function ChoreEditor() {
         <FieldError message={shown.deadlineMinutes} />
       </Section>
 
-      <Section title="Who" hint={ASSIGN_HINT[form.assignMode]}>
+      <Section
+        title="Who"
+        hint={ASSIGN_HINT[form.assignMode]}
+        badge={form.assignMode === "OPEN" ? <ProBadge feature="jobBoard" /> : undefined}
+      >
         <ChoiceChips
           options={[
             { value: "AUTO", label: "Balance by time" },
@@ -470,6 +475,7 @@ export default function ChoreEditor() {
       <Section
         title="Reference photo"
         hint="Optional. Shows kids what done looks like, and sits next to their photo when you review."
+        badge={<ProBadge feature="photos" />}
       >
         {newReference.length === 0 && currentReference !== null && (
           <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
@@ -485,7 +491,11 @@ export default function ChoreEditor() {
         <PhotoPicker purpose="REFERENCE" max={1} items={newReference} onChange={setNewReference} />
       </Section>
 
-      <Section title="Checking it" hint={REVIEW_HINT[form.reviewPolicy]}>
+      <Section
+        title="Checking it"
+        hint={REVIEW_HINT[form.reviewPolicy]}
+        badge={form.requiresPhoto ? <ProBadge feature="photos" /> : undefined}
+      >
         <ChoiceChips
           options={[
             { value: "REVIEW_EACH", label: "Review each" },

@@ -28,6 +28,7 @@ export const NOTIFICATION_TYPES = [
   "SUBMITTED",
   "REDEMPTION_REQUESTED",
   "GOAL_REACHED",
+  "TRIAL_ENDING",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -77,6 +78,11 @@ export const NOTIFICATION_INFO: Record<
     audience: "everyone",
     delivery: "DIGEST",
     description: "The family goal is reached",
+  },
+  TRIAL_ENDING: {
+    audience: "parent",
+    delivery: "DIGEST",
+    description: "The free Pro trial is about to end",
   },
 };
 
@@ -159,6 +165,8 @@ export interface NotificationDetails {
   approved?: boolean;
   badgeLabel?: string;
   goalName?: string;
+  /** TRIAL_ENDING: whole days left. */
+  daysLeft?: number;
 }
 
 export function notificationText(
@@ -207,6 +215,13 @@ export function notificationText(
         title: `Goal reached: ${d.goalName ?? "the family goal"}!`,
         body: "The whole family did it together.",
       };
+    case "TRIAL_ENDING": {
+      const left = d.daysLeft ?? 3;
+      return {
+        title: `Your Pro trial ends in ${left} ${left === 1 ? "day" : "days"}`,
+        body: "Subscribe to keep photo proof, real money, and more. Nothing is lost if you don't.",
+      };
+    }
   }
 }
 

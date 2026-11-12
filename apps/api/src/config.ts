@@ -33,6 +33,12 @@ const envSchema = z.object({
   COOKIE_SECURE: z.enum(["true", "false"]).optional(),
   // Optional: Expo's push security token, if "enhanced push security" is on for the project.
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  // RevenueCat (subscriptions). The secret API key reads a family's Pro status;
+  // the webhook value is the Authorization header RevenueCat sends with events.
+  // Both are required in production; in development, without them nobody is
+  // ever subscribed (trials still work).
+  REVENUECAT_SECRET_KEY: z.string().optional(),
+  REVENUECAT_WEBHOOK_AUTH: z.string().min(16).optional(),
 });
 
 export interface StorageConfig {
@@ -72,6 +78,12 @@ export interface AppConfig {
   cookieSecure: boolean;
   /** Proof photos are deleted this many days after the submission was reviewed. */
   photoRetentionDays: number;
+  billing: {
+    /** RevenueCat secret API key; unset means purchases aren't set up. */
+    revenueCatSecretKey?: string;
+    /** The exact Authorization header RevenueCat's webhook sends. */
+    webhookAuth?: string;
+  };
 }
 
 /**
@@ -128,6 +140,14 @@ function productionProblems(e: z.infer<typeof envSchema>, corsOrigins: string[])
   } else if (!e.S3_PUBLIC_URL.startsWith("https://")) {
     problems.push("  S3_PUBLIC_URL: must be https in production");
   }
+  if (!e.REVENUECAT_SECRET_KEY) {
+    problems.push("  REVENUECAT_SECRET_KEY: set RevenueCat's secret API key (subscriptions)");
+  }
+  if (!e.REVENUECAT_WEBHOOK_AUTH) {
+    problems.push(
+      "  REVENUECAT_WEBHOOK_AUTH: set the Authorization value RevenueCat's webhook sends",
+    );
+  }
   return problems;
 }
 
@@ -180,6 +200,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
     cookieSecure: e.COOKIE_SECURE ? e.COOKIE_SECURE === "true" : production,
     photoRetentionDays: 90,
+    billing: {
+      ...(e.REVENUECAT_SECRET_KEY && { revenueCatSecretKey: e.REVENUECAT_SECRET_KEY }),
+      ...(e.REVENUECAT_WEBHOOK_AUTH && { webhookAuth: e.REVENUECAT_WEBHOOK_AUTH }),
+    },
     ...(e.EXPO_ACCESS_TOKEN && { expoAccessToken: e.EXPO_ACCESS_TOKEN }),
   };
 }
