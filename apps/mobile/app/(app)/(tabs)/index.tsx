@@ -35,6 +35,9 @@ import { useProgress } from "../../../src/features/progress/useProgress";
 import { kv } from "../../../src/lib/kv";
 import { useApi, useFamily, useSession } from "../../../src/state/AppProvider";
 import { colors, radii, spacing } from "../../../src/theme";
+import { usePlan } from "../../../src/features/pro/ProBadge";
+import { publishWidget } from "../../../src/features/widgets/publish";
+import { buildWidgetSnapshot } from "../../../src/features/widgets/snapshot";
 
 export default function Today() {
   const api = useApi();
@@ -79,6 +82,24 @@ export default function Today() {
     enabled: familyId !== undefined,
     refetchInterval: 60_000,
   });
+
+  // Keep the home-screen widget in step with what this person sees here.
+  const plan = usePlan();
+  const widgetsAllowed = plan?.features.widgets ?? false;
+  const displayName = session?.user.displayName;
+  useEffect(() => {
+    if (!agenda.data || membershipId === undefined || !role || !displayName) return;
+    publishWidget(
+      buildWidgetSnapshot({
+        items: agenda.data.items,
+        viewerMembershipId: membershipId,
+        name: displayName,
+        role,
+        widgetsAllowed,
+        now: new Date(),
+      }),
+    );
+  }, [agenda.data, membershipId, role, displayName, widgetsAllowed]);
   const rewards = useRewards();
   // Open jobs this person could take: extra work for extra rewards.
   const jobBoard = useQuery({

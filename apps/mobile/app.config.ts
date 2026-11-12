@@ -14,6 +14,10 @@ import type { ExpoConfig } from "expo/config";
 // Assumes the domain gettenara.com: confirm before the first store build (it can't change after).
 const BUNDLE_ID = "com.gettenara.family";
 const EAS_PROJECT_ID: string | undefined = process.env.EAS_PROJECT_ID || undefined;
+/** Shared with the iPhone widget (targets/widget) for its snapshot. */
+const APP_GROUP = `group.${BUNDLE_ID}`;
+/** Apple Developer team id; the widget extension needs it to be signed. */
+const APPLE_TEAM_ID: string | undefined = process.env.APPLE_TEAM_ID || undefined;
 
 const config: ExpoConfig = {
   // The name under the icon: short, because iPhones cut off "Tenara Family".
@@ -32,6 +36,8 @@ const config: ExpoConfig = {
     supportsTablet: true, // family iPads are a primary shared device
     // Only standard HTTPS encryption: skips TestFlight's export-compliance question.
     config: { usesNonExemptEncryption: false },
+    entitlements: { "com.apple.security.application-groups": [APP_GROUP] },
+    ...(APPLE_TEAM_ID && { appleTeamId: APPLE_TEAM_ID }),
   },
   android: {
     package: BUNDLE_ID,
@@ -63,6 +69,28 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       { image: "./assets/generated/splash-icon.png", imageWidth: 160, backgroundColor: "#F1F5F9" },
+    ],
+    // Home-screen widgets (Pro). iPhone: the SwiftUI target in targets/widget.
+    "@bacons/apple-targets",
+    // Android: drawn from JS (src/features/widgets/TodayWidget.tsx).
+    [
+      "react-native-android-widget",
+      {
+        widgets: [
+          {
+            name: "Today",
+            label: "Today's chores",
+            description: "What's left today, at a glance.",
+            minWidth: "180dp",
+            minHeight: "110dp",
+            targetCellWidth: 3,
+            targetCellHeight: 2,
+            resizeMode: "horizontal|vertical",
+            // Android's minimum; the app also redraws it whenever Today loads.
+            updatePeriodMillis: 1_800_000,
+          },
+        ],
+      },
     ],
   ],
 };
